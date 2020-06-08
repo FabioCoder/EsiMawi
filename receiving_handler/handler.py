@@ -5,9 +5,6 @@ import os
 import pymysql
 from receiving import Receiving
 
-
-# import requests
-
 rds_host = os.environ['DB_HOST']
 name = os.environ['DB_USER']
 password = os.environ['DB_PASSWORD']

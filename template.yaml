@@ -39,27 +39,27 @@ Globals:
 
 Resources:
   HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function
     Properties:
       CodeUri: hello_world/
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
         HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Type: Api
           Properties:
             Path: /hello
             Method: get
 
   GetReceivingFunction:
-    Type: AWS::Serverless::Function
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: receiving_handler/
       Handler: handler.get
       Runtime: python3.6
       Events:
         GetReceiving:
-          Type: Api
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
             Path: /receivings/{id}
             Method: get
@@ -89,6 +89,32 @@ Resources:
           Properties:
             Path: /receivings
             Method: get
+
+  GetInventoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: stock_handler/
+      Handler: handler.getInventory
+      Runtime: python3.6
+      Events:
+        GetReceiving:
+          Type: Api
+          Properties:
+            Path: /inventory
+            Method: get
+
+  BookToStockFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: stock_handler/
+      Handler: handler.bookToStock
+      Runtime: python3.6
+      Events:
+        CreateReceiving:
+          Type: Api
+          Properties:
+            Path: /stock
+            Method: post
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
