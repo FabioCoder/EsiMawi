@@ -5,10 +5,37 @@ Description: >
 
   Sample SAM Template for AWS
 
+
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Parameters:
+  DBEndpoint:
+    Type: String
+    Description: "Database endpoint"
+  DBName:
+    Type: String
+    Description: "Database name"
+  DBUsername:
+    Type: String
+    Description: "Username for database access"
+  DBPassword:
+    Type: String
+    Description: "Password for database access"
+
 Globals:
   Function:
     Timeout: 3
+    Environment:
+      Variables:
+        DB_HOST: !Ref DBEndpoint
+        DB_PASSWORD: !Ref DBPassword
+        DB_USER: !Ref DBUsername
+        DB_NAME: !Ref DBName
+    VpcConfig:
+      SecurityGroupIds:
+        - sg-057bc420
+      SubnetIds:
+        - subnet-00f2720e
+        - subnet-17c8da29
 
 Resources:
   HelloWorldFunction:
@@ -27,40 +54,40 @@ Resources:
   GetReceivingFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: receiving/
+      CodeUri: receiving_handler/
       Handler: handler.get
       Runtime: python3.6
       Events:
         GetReceiving:
           Type: Api
           Properties:
-            Path: /receiving/{id}
+            Path: /receivings/{id}
             Method: get
 
   CreateReceivingFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: receiving/
+      CodeUri: receiving_handler/
       Handler: handler.create
       Runtime: python3.6
       Events:
         CreateReceiving:
           Type: Api
           Properties:
-            Path: /receiving
+            Path: /receivings
             Method: post
 
   GetAllReceivingFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: receiving/
+      CodeUri: receiving_handler/
       Handler: handler.get_all
       Runtime: python3.6
       Events:
         GetAllReceiving:
           Type: Api
           Properties:
-            Path: /receiving
+            Path: /receivings
             Method: get
 
 Outputs:

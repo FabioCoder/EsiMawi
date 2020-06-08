@@ -3,6 +3,7 @@ import json
 import pytest
 
 from hello_world import app
+from receiving_handler import handler as receiving
 
 
 @pytest.fixture()
