@@ -1,12 +1,13 @@
 import sys
 import logging
 import os
-import pymysql
 import json
-from datetime import datetime
-from inventory import Inventory
-from stockentry import StockEntry
-
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy.orm import sessionmaker, relationship
+from marshmallow_sqlalchemy import SQLAlchemySchema, auto_field
+from sqlalchemy.dialects.mysql import TINYINT, DOUBLE
 rds_host = os.environ['DB_HOST']
 name = os.environ['DB_USER']
 password = os.environ['DB_PASSWORD']
@@ -15,14 +16,57 @@ db_name = os.environ['DB_NAME']
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+rds_host = os.environ['DB_HOST']
+name = os.environ['DB_USER']
+password = os.environ['DB_PASSWORD']
+db_name = os.environ['DB_NAME']
+
+Base = declarative_base()
+engine = create_engine('mysql+mysqlconnector://' + name + ':' + password + '@' + rds_host + '/' + db_name, echo=True)
+
 try:
-    conn = pymysql.connect(rds_host, user=name, passwd=password, db=db_name, connect_timeout=5)
-except pymysql.MySQLError as e:
+    # create a session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+except:
     logger.error("ERROR: Unexpected error: Could not connect to MySQL instance.")
-    logger.error(e)
     sys.exit()
 
-logger.info("SUCCESS: Connection to RDS MySQL instance succeeded")
+
+class Inventory(Base):
+    __tablename__ = 'inventory'
+    fkplaces = Column(Integer, ForeignKey('places.idplaces'),primary_key=True)
+    fkmaterials = Column(Integer, ForeignKey('materials.idmaterials'), primary_key=True)
+    opened = Column(TINYINT, primary_key=True)
+    quantity = Column(Integer)
+
+
+class Place(Base):
+    __tablename__ = 'places'
+    idplaces = Column(Integer, primary_key=True)
+    description = Column(String(45))
+    fkstocks = Column(Integer, ForeignKey('stocks.idstocks'), nullable=False)
+    inventories = relationship("Inventory")
+
+
+class Stock(Base):
+    __tablename__ = 'stocks'
+    idstocks = Column(Integer, primary_key=True)
+    description = Column(String(45))
+    places = relationship("Place")
+
+
+class Material(Base):
+    __tablename__ = 'materials'
+    idmaterials = Column(Integer, primary_key=True)
+    name = Column(String(20), nullable=False)
+    description = Column(String(45))
+    size = Column(DOUBLE)
+    measure = Column(String(10))
+    minStock = Column(Integer)
+    art = Column(String(45), nullable=False)
+    inventories = relationship("Inventory")
+
 
 
 def getInventory(event, context):

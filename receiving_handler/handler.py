@@ -2,102 +2,93 @@ import json
 import sys
 import logging
 import os
-import pymysql
-from receiving import Receiving
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, DateTime
+from sqlalchemy.orm import sessionmaker
+from marshmallow_sqlalchemy import SQLAlchemySchema, auto_field
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 rds_host = os.environ['DB_HOST']
 name = os.environ['DB_USER']
 password = os.environ['DB_PASSWORD']
 db_name = os.environ['DB_NAME']
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+Base = declarative_base()
+engine = create_engine('mysql+mysqlconnector://' + name + ':' + password + '@' + rds_host + '/' + db_name, echo=True)
 
 try:
-    conn = pymysql.connect(rds_host, user=name, passwd=password, db=db_name, connect_timeout=5)
-except pymysql.MySQLError as e:
+    # create a session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+except:
     logger.error("ERROR: Unexpected error: Could not connect to MySQL instance.")
-    logger.error(e)
     sys.exit()
 
-logger.info("SUCCESS: Connection to RDS MySQL instance succeeded")
+
+class Receiving(Base):
+    __tablename__ = 'receivings'
+    id = Column(Integer, primary_key=True)
+    receiving_date = Column(DateTime)
+
+
+class ReceivingSchema(SQLAlchemySchema):
+    class Meta:
+        model = Receiving
+        load_instance = True
+
+    id = auto_field()
+    receiving_date = auto_field()
 
 
 def get(event, context):
-
     params = event["pathParameters"]
     id = params["id"]
-    logger.info('id:' + id)
 
-    if not id.isdigit():
+    if not isinstance(id, int):
         logger.info('Ungültige Wareneingang-ID.')
         return {
             'statusCode': 400,
             'body': json.dumps("[BadRequest] Ungültige Wareneingang-ID übergeben.")
         }
 
-    with conn.cursor(cursor=pymysql.cursors.DictCursor) as cur:
-        cur.execute("select * from receivings r where r.id = " + id)
-
-        count = cur.rowcount
-        if count > 0:
-            row = cur.fetchone()
-            r = Receiving.rowToObject(row)
-            logger.info(r.toJson())
-    conn.commit()
-
-    if count <= 0:
-        logger.info('Wareneingang nicht gefunden.')
+    receiving = session.query(Receiving).filter(Receiving.id==id).first()
+    if receiving is None:
         return {
             'statusCode': 400,
             'body': json.dumps("[BadRequest] Ungültige Wareneingang-ID übergeben.")
         }
 
+    # Serialize the queryset
+    result = ReceivingSchema().dump(receiving)
     return {
         "statusCode": 200,
-        "body": json.dumps(r.toJson()),
+        "body": json.dumps(result),
     }
 
 
 def create(event, context):
     logger.info(event)
+    receiving_new = ReceivingSchema().load(event, session=session)
 
-    try:
-        r = Receiving.eventToObject(event)
-    except KeyError:
-        return {
-            'statusCode': 400,
-            'body': json.dumps("[BadRequest] Ungültiger Wareneingang.")
-        }
+    session.add(receiving_new)
+    session.commit()
 
-    with conn.cursor(cursor=pymysql.cursors.DictCursor) as cur:
-        sql = "INSERT INTO `receivings` (`receiving_date`) VALUES (%s)"
-        cur.execute(sql, (r.getReceivingDate()))
-        r.id = cur.lastrowid
-    conn.commit()
-
+    # Serialize the queryset
+    result = ReceivingSchema().dump(receiving_new)
     return {
         "statusCode": 200,
-        "body": json.dumps(r.toJson()),
+        "body": json.dumps(result),
     }
 
-
 def get_all(event, context):
-    with conn.cursor(cursor=pymysql.cursors.DictCursor) as cur:
-        cur.execute("select * from receivings")
-        rows = cur.fetchall()
+    receivings = session.query(Receiving).order_by(Receiving.receiving_date)
 
-        receivings = []
-        for row in rows:
-            logger.info(row["id"])
-            logger.info(row["receiving_date"])
-            r = Receiving.rowToObject(row)
-            logger.info(r.toJson())
-            receivings.append(r.toJson())
-
-    conn.commit()
-
+    # Serialize the queryset
+    result = ReceivingSchema().dump(receivings, many=True)
     return {
         "statusCode": 200,
-        "body": json.dumps(receivings),
+        "body": json.dumps(result),
     }
