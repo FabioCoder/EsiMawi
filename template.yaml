@@ -55,7 +55,7 @@ Resources:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: receiving_handler/
-      Handler: handler.get
+      Handler: handler.getReceiving
       Runtime: python3.6
       Events:
         GetReceiving:
@@ -68,7 +68,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: receiving_handler/
-      Handler: handler.create
+      Handler: handler.createReceiving
       Runtime: python3.6
       Events:
         CreateReceiving:
@@ -81,13 +81,52 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: receiving_handler/
-      Handler: handler.get_all
+      Handler: handler.get_allReceiving
       Runtime: python3.6
       Events:
         GetAllReceiving:
           Type: Api
           Properties:
             Path: /receivings
+            Method: get
+
+  GetOrderFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.getOrder
+      Runtime: python3.6
+      Events:
+        GetOrder:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /orders/{id}
+            Method: get
+
+  CreateOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.createOrder
+      Runtime: python3.6
+      Events:
+        CreateReceiving:
+          Type: Api
+          Properties:
+            Path: /orders
+            Method: post
+
+  GetAllOrdersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.get_allOrders
+      Runtime: python3.6
+      Events:
+        GetAllOrders:
+          Type: Api
+          Properties:
+            Path: /orders
             Method: get
 
   GetInventoryFunction:
@@ -97,7 +136,7 @@ Resources:
       Handler: handler.getInventory
       Runtime: python3.6
       Events:
-        GetReceiving:
+        GetInventory:
           Type: Api
           Properties:
             Path: /inventory
@@ -110,10 +149,24 @@ Resources:
       Handler: handler.bookToStock
       Runtime: python3.6
       Events:
-        CreateReceiving:
+        BookToStock:
           Type: Api
           Properties:
             Path: /stock
+            Method: post
+
+
+  CreateGoodsOrdersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: stock_handler/
+      Handler: handler.createGoodsOrders
+      Runtime: python3.6
+      Events:
+        CreateGoodsOrders:
+          Type: Api
+          Properties:
+            Path: /goods/orders
             Method: post
 
 Outputs:

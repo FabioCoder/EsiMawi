@@ -44,7 +44,7 @@ def session_scope():
     finally:
         session.close()
 
-
+#ORM
 class Inventory(Base):
     __tablename__ = 'inventory'
     fkplaces = Column(Integer, ForeignKey('places.idplaces'),primary_key=True)
@@ -63,6 +63,7 @@ class Place(Base):
 
     inventories = relationship("Inventory", back_populates="place")
     stocks = relationship("Stock", back_populates="place")
+
 
 class Stock(Base):
     __tablename__ = 'stocks'
@@ -96,6 +97,16 @@ class StockEntry(Base):
     booking_date = Column(DateTime,  nullable=False, default=dt.now)
 
 
+class GoodsOrder(Base):
+    __tablename__ = 'goodsOrders'
+    idgoodsOrders = Column(Integer, primary_key=True)
+    fkmaterials = Column(Integer, ForeignKey('materials.idmaterials'))
+    productionOrderNr = Column(String)
+    quantity = Column(Integer)
+    creation_date = Column(DateTime, nullable=False, default=dt.now)
+
+
+#SCHEMA
 class MaterialSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Material
@@ -123,6 +134,13 @@ class StockEntrySchema(SQLAlchemyAutoSchema):
         load_instance = True
 
 
+class GoodsOrderSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = GoodsOrder
+        include_fk = True
+        load_instance = True
+
+#LAMBDA
 def getInventory(event, context):
     with session_scope() as session:
         inventory = session.query(Inventory).order_by(Inventory.fkplaces)
@@ -152,4 +170,21 @@ def bookToStock(event, context):
     return {
         "statusCode": 200,
         "body": json.dumps(result),
+    }
+
+
+def createGoodsOrders(event, context):
+    logger.info(event)
+
+    body = ast.literal_eval(event.get('body'))
+    logger.info(body)
+
+    with session_scope() as session:
+        goodsOrders_new = GoodsOrderSchema().load(body, session=session, many=True)
+        session.add_all(goodsOrders_new)
+        session.commit()
+        result = StockEntrySchema().dump(goodsOrders_new, many=True)
+    return {
+        "statusCode": 200,
+        "body": json.dumps(""),
     }
