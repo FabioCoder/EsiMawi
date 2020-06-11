@@ -10,6 +10,8 @@ from sqlalchemy.orm import sessionmaker, relationship
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from marshmallow_sqlalchemy.fields import Nested
 from sqlalchemy.dialects.mysql import TINYINT, DOUBLE
+import ast
+from contextlib import contextmanager
 
 rds_host = os.environ['DB_HOST']
 name = os.environ['DB_USER']
@@ -27,13 +29,20 @@ db_name = os.environ['DB_NAME']
 Base = declarative_base()
 engine = create_engine('mysql+mysqlconnector://' + name + ':' + password + '@' + rds_host + '/' + db_name, echo=True)
 
-try:
-    # create a session
+
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
     Session = sessionmaker(bind=engine)
     session = Session()
-except:
-    logger.error("ERROR: Unexpected error: Could not connect to MySQL instance.")
-    sys.exit()
+    try:
+        yield session
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 class Inventory(Base):
@@ -115,10 +124,11 @@ class StockEntrySchema(SQLAlchemyAutoSchema):
 
 
 def getInventory(event, context):
-    inventory = session.query(Inventory).order_by(Inventory.fkplaces)
+    with session_scope() as session:
+        inventory = session.query(Inventory).order_by(Inventory.fkplaces)
 
-    # Serialize the queryset
-    result = InventorySchema().dump(inventory, many=True)
+        # Serialize the queryset
+        result = InventorySchema().dump(inventory, many=True)
 
     return {
         "statusCode": 200,
@@ -129,13 +139,15 @@ def getInventory(event, context):
 def bookToStock(event, context):
     logger.info(event)
 
-    stockEntry_new = StockEntrySchema().load(event, session=session)
+    body = ast.literal_eval(event.get('body'))
+    logger.info(body)
 
-    session.add(stockEntry_new)
-    session.commit()
-
-    # Serialize the queryset
-    result = StockEntrySchema().dump(stockEntry_new)
+    with session_scope() as session:
+        stockEntry_new = StockEntrySchema().load(body, session=session)
+        session.add(stockEntry_new)
+        session.commit()
+        # Serialize the queryset
+        result = StockEntrySchema().dump(stockEntry_new)
 
     return {
         "statusCode": 200,

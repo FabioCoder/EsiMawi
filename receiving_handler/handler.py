@@ -7,6 +7,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, DateTime
 from sqlalchemy.orm import sessionmaker
 from marshmallow_sqlalchemy import SQLAlchemySchema, auto_field
+import ast
+from contextlib import contextmanager
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -19,13 +21,20 @@ db_name = os.environ['DB_NAME']
 Base = declarative_base()
 engine = create_engine('mysql+mysqlconnector://' + name + ':' + password + '@' + rds_host + '/' + db_name, echo=True)
 
-try:
-    # create a session
+
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
     Session = sessionmaker(bind=engine)
     session = Session()
-except:
-    logger.error("ERROR: Unexpected error: Could not connect to MySQL instance.")
-    sys.exit()
+    try:
+        yield session
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 class Receiving(Base):
@@ -47,15 +56,16 @@ def get(event, context):
     params = event["pathParameters"]
     id = params["id"]
 
-    receiving = session.query(Receiving).filter(Receiving.id==id).first()
-    if receiving is None:
-        return {
-            'statusCode': 400,
-            'body': json.dumps("[BadRequest] Ungültige Wareneingang-ID übergeben.")
-        }
+    with session_scope() as session:
+        receiving = session.query(Receiving).filter(Receiving.id==id).first()
+        if receiving is None:
+            return {
+                'statusCode': 400,
+                'body': json.dumps("[BadRequest] Ungültige Wareneingang-ID übergeben.")
+            }
 
-    # Serialize the queryset
-    result = ReceivingSchema().dump(receiving)
+        # Serialize the queryset
+        result = ReceivingSchema().dump(receiving)
     return {
         "statusCode": 200,
         "body": json.dumps(result),
@@ -64,23 +74,27 @@ def get(event, context):
 
 def create(event, context):
     logger.info(event)
-    receiving_new = ReceivingSchema().load(event, session=session)
 
-    session.add(receiving_new)
-    session.commit()
+    body = ast.literal_eval(event.get('body'))
+    logger.info(body)
 
-    # Serialize the queryset
-    result = ReceivingSchema().dump(receiving_new)
+    with session_scope() as session:
+        receiving_new = ReceivingSchema().load(body, session=session)
+        session.add(receiving_new)
+        session.commit()
+        # Serialize the queryset
+        result = ReceivingSchema().dump(receiving_new)
     return {
         "statusCode": 200,
         "body": json.dumps(result),
     }
 
 def get_all(event, context):
-    receivings = session.query(Receiving).order_by(Receiving.receiving_date)
+    with session_scope() as session:
+        receivings = session.query(Receiving).order_by(Receiving.receiving_date)
 
-    # Serialize the queryset
-    result = ReceivingSchema().dump(receivings, many=True)
+        # Serialize the queryset
+        result = ReceivingSchema().dump(receivings, many=True)
     return {
         "statusCode": 200,
         "body": json.dumps(result),
