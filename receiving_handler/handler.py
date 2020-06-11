@@ -47,13 +47,6 @@ def get(event, context):
     params = event["pathParameters"]
     id = params["id"]
 
-    if not isinstance(id, int):
-        logger.info('Ungültige Wareneingang-ID.')
-        return {
-            'statusCode': 400,
-            'body': json.dumps("[BadRequest] Ungültige Wareneingang-ID übergeben.")
-        }
-
     receiving = session.query(Receiving).filter(Receiving.id==id).first()
     if receiving is None:
         return {

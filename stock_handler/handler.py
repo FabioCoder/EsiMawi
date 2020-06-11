@@ -1,13 +1,16 @@
 import sys
 import logging
 import os
-import json
+import simplejson as json
+from datetime import datetime as dt
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.orm import sessionmaker, relationship
-from marshmallow_sqlalchemy import SQLAlchemySchema, auto_field
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+from marshmallow_sqlalchemy.fields import Nested
 from sqlalchemy.dialects.mysql import TINYINT, DOUBLE
+
 rds_host = os.environ['DB_HOST']
 name = os.environ['DB_USER']
 password = os.environ['DB_PASSWORD']
@@ -40,20 +43,24 @@ class Inventory(Base):
     opened = Column(TINYINT, primary_key=True)
     quantity = Column(Integer)
 
+    material = relationship("Material", back_populates="inventories")
+    place = relationship("Place", back_populates="inventories")
 
 class Place(Base):
     __tablename__ = 'places'
     idplaces = Column(Integer, primary_key=True)
     description = Column(String(45))
     fkstocks = Column(Integer, ForeignKey('stocks.idstocks'), nullable=False)
-    inventories = relationship("Inventory")
 
+    inventories = relationship("Inventory", back_populates="place")
+    stocks = relationship("Stock", back_populates="place")
 
 class Stock(Base):
     __tablename__ = 'stocks'
     idstocks = Column(Integer, primary_key=True)
     description = Column(String(45))
-    places = relationship("Place")
+
+    place = relationship("Place",  back_populates="stocks")
 
 
 class Material(Base):
@@ -65,55 +72,72 @@ class Material(Base):
     measure = Column(String(10))
     minStock = Column(Integer)
     art = Column(String(45), nullable=False)
-    inventories = relationship("Inventory")
 
+    inventories = relationship("Inventory",  back_populates="material")
+
+
+class StockEntry(Base):
+    __tablename__ = 'stockEntries'
+    idstockEntries = Column(Integer, primary_key=True)
+    fkplaces = Column(Integer, ForeignKey('places.idplaces'), nullable=False)
+    fkmaterials = Column(Integer, ForeignKey('materials.idmaterials'), nullable=False)
+    fkorders = Column(Integer)
+    opened = Column(TINYINT,  nullable=False)
+    quantity = Column(Integer,  nullable=False)
+    booking_date = Column(DateTime,  nullable=False, default=dt.now)
+
+
+class MaterialSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Material
+
+
+class PlaceSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Place
+
+
+class InventorySchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Inventory
+        include_fk = True
+
+    # Override materials field to use a nested representation rather than pks
+    material = Nested(lambda: MaterialSchema(), dump_only=True)
+    place = Nested(lambda: PlaceSchema(), dump_only=True)
+
+
+class StockEntrySchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = StockEntry
+        include_fk = True
+        load_instance = True
 
 
 def getInventory(event, context):
-    with conn.cursor(cursor=pymysql.cursors.DictCursor) as cur:
-        sql = """SELECT inventory.fkplaces, places.description, inventory.fkmaterials, materials.name as materialName, 
-                materials.size, inventory.quantity, (materials.size * inventory.quantity) as quantity_in_measure,
-                materials.measure, materials.minStock, inventory.opened
-                FROM innodb.inventory as inventory
-                join innodb.materials as materials on inventory.fkmaterials = materials.idmaterials
-                join innodb.places as places on inventory.fkplaces = places.idplaces
-            """
-        cur.execute(sql)
-        rows = cur.fetchall()
+    inventory = session.query(Inventory).order_by(Inventory.fkplaces)
 
-        inventory = []
-        for row in rows:
-            i = Inventory.rowToObject(row)
-            logger.info(i.toJson())
-            inventory.append(i.toJson())
-
-    conn.commit()
+    # Serialize the queryset
+    result = InventorySchema().dump(inventory, many=True)
 
     return {
         "statusCode": 200,
-        "body": json.dumps(inventory),
+        "body": json.dumps(result, use_decimal=True),
     }
 
 
 def bookToStock(event, context):
     logger.info(event)
 
-    try:
-        se = StockEntry.eventToObject(event)
-    except KeyError:
-        return {
-            'statusCode': 400,
-            'body': json.dumps("[BadRequest] Ungültige Lagerbuchung.")
-        }
+    stockEntry_new = StockEntrySchema().load(event, session=session)
 
-    with conn.cursor(cursor=pymysql.cursors.DictCursor) as cur:
-        booking_date = datetime.now()
-        sql = "INSERT INTO `stockEntries` (`fkplaces`, `fkmaterials`, `opened`, `quantity`, `booking_date`) " \
-              "VALUES (%s,%s,%s, %s, %s)"
-        cur.execute(sql, (se.getFkPlaces(), se.getFkMaterials(), se.getOpened(), se.getQuantity(), booking_date))
-    conn.commit()
+    session.add(stockEntry_new)
+    session.commit()
+
+    # Serialize the queryset
+    result = StockEntrySchema().dump(stockEntry_new)
 
     return {
         "statusCode": 200,
-        "body": json.dumps(se.toJson()),
+        "body": json.dumps(result),
     }
