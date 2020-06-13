@@ -3,3 +3,4 @@ sqlalchemy
 mysql-connector-python
 marshmallow_sqlalchemy
 simplejson
+marshmallow

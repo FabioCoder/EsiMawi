@@ -1,4 +1,4 @@
-import json
+import simplejson as json
 import sys
 import logging
 import os
@@ -52,7 +52,7 @@ class Material(Base):
 
     receivingPos = relationship("ReceivingPosition", back_populates="material")
     orderPos = relationship("OrderPosition", back_populates="material")
-
+    charges = relationship("Charge", back_populates="material")
 
 class Receiving(Base):
     __tablename__ = 'receivings'
@@ -79,7 +79,7 @@ class ReceivingPosition(Base):
 class Order(Base):
     __tablename__ = 'orders'
     idorders = Column(Integer, primary_key=True)
-    order_date = Column(DateTime, nullable=False)
+    order_date = Column(DateTime, default=dt, nullable=False)
     capturer = Column(String(10))
     state = Column(String(7))
     fksupplier = Column(Integer)
@@ -97,6 +97,36 @@ class OrderPosition(Base):
 
     material = relationship("Material", back_populates="orderPos")
     order = relationship("Order", back_populates="orderPos")
+
+
+class Charge(Base):
+    __tablename__ = 'charges'
+    idcharges = Column(Integer, ForeignKey('chargesShirt.fkcharges'), primary_key=True)
+    fkmaterials = Column(Integer, ForeignKey('materials.idmaterials'), nullable=False)
+    date = Column(DateTime, default=dt.now)
+
+    material = relationship("Material", back_populates="charges")
+    chargeShirt = relationship("ChargeShirt", back_populates="charge")
+    chargeColor = relationship("ChargeColor", back_populates="charge")
+
+
+class ChargeShirt(Base):
+    __tablename__ = 'chargesShirt'
+    fkcharges = Column(Integer, ForeignKey('charges.idcharges'), primary_key=True)
+    whiteness = Column(Integer, nullable=False)
+    absorbency = Column(DOUBLE, nullable=False)
+
+    charge = relationship("Charge", back_populates="chargeShirt")
+
+
+class ChargeColor(Base):
+    __tablename__ = 'chargesColor'
+    fkcharges = Column(Integer, ForeignKey('charges.idcharges'), primary_key=True)
+    ppml = Column(Integer, nullable=False)
+    viscosity = Column(DOUBLE, nullable=False)
+    deltaE = Column(DOUBLE, nullable=False)
+
+    charge = relationship("Charge", back_populates="chargeColor")
 
 
 #SCHEMA
@@ -118,7 +148,7 @@ class ReceivingSchema(SQLAlchemyAutoSchema):
         model = Receiving
         include_fk = True
 
-    receivingPos = Nested(lambda: ReceivingPositionSchema(), dump_only=True)
+    receivingPos = Nested(ReceivingPositionSchema(), many=True)
 
 
 class OrderPositionSchema(SQLAlchemyAutoSchema):
@@ -134,8 +164,27 @@ class OrderSchema(SQLAlchemyAutoSchema):
         model = Order
         load_instance = True
 
-    orderPos = Nested(lambda: OrderPositionSchema(), dump_only=True)
+    orderPos = Nested(OrderPositionSchema(), many=True)
 
+
+class ChargeShirtSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = ChargeShirt
+
+
+class ChargeColorSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = ChargeColor
+
+
+class ChargeSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Charge
+        include_fk = True
+
+    material = Nested(lambda: MaterialSchema(), dump_only=True)
+    chargeShirt = Nested(lambda:ChargeShirtSchema())
+    chargeColor = Nested(lambda:ChargeColorSchema())
 
 def getReceiving(event, context):
     params = event["pathParameters"]
@@ -253,6 +302,28 @@ def get_allOrders(event, context):
 
         # Serialize the queryset
         result = OrderSchema().dump(orders, many=True)
+    return {
+        "statusCode": 200,
+        "body": json.dumps(result),
+    }
+
+
+def getCharge(event, context):
+    params = event["pathParameters"]
+    id = params["id"]
+
+    with session_scope() as session:
+        charge = session.query(Charge).filter(Charge.idcharges==id).first()
+
+        if charge.material.art == 'Shirt':
+            # Serialize the queryset
+            result = ChargeSchema(exclude=['chargeColor']).dump(charge)
+
+        elif charge.material.art == 'Farbe':
+            result = ChargeSchema(exclude=['chargeShirt']).dump(charge)
+        else:
+            result = ChargeSchema(exclude=['chargeShirt', 'chargeColor']).dump(charge)
+
     return {
         "statusCode": 200,
         "body": json.dumps(result),

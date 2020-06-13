@@ -129,6 +129,21 @@ Resources:
             Path: /orders
             Method: get
 
+
+  GetChargeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.getCharge
+      Runtime: python3.6
+      Events:
+        GetCharge:
+          Type: Api
+          Properties:
+            Path: /charges
+            Method: get
+
+
   GetInventoryFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -142,19 +157,31 @@ Resources:
             Path: /inventory
             Method: get
 
-  BookToStockFunction:
+  BookMaterialToStock:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: stock_handler/
-      Handler: handler.bookToStock
+      Handler: handler.bookMaterial
       Runtime: python3.6
       Events:
-        BookToStock:
+        BookMaterialToStock:
           Type: Api
           Properties:
-            Path: /stock
+            Path: /stock/material
             Method: post
 
+  BookProductToStock:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: stock_handler/
+      Handler: handler.bookProductToStock
+      Runtime: python3.6
+      Events:
+        BookProductToStock:
+          Type: Api
+          Properties:
+            Path: /stock/product
+            Method: post
 
   CreateGoodsOrdersFunction:
     Type: AWS::Serverless::Function
