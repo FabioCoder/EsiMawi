@@ -183,6 +183,35 @@ Resources:
             Path: /stock/product
             Method: post
 
+
+  BookProductFromStock:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: stock_handler/
+      Handler: handler.bookProductFromStock
+      Runtime: python3.6
+      Events:
+        BookProductToStock:
+          Type: Api
+          Properties:
+            Path: /stock/product
+            Method: delete
+
+
+  GetPackageListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: stock_handler/
+      Handler: handler.getPackageList
+      Runtime: python3.6
+      Events:
+        GetPackageList:
+          Type: Api
+          Properties:
+            Path: /goods/orders
+            Method: get
+
+
   CreateGoodsOrdersFunction:
     Type: AWS::Serverless::Function
     Properties:
