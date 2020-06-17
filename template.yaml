@@ -32,10 +32,10 @@ Globals:
         DB_NAME: !Ref DBName
     VpcConfig:
       SecurityGroupIds:
-        - sg-057bc420
+        - sg-7b3fd503
       SubnetIds:
-        - subnet-00f2720e
-        - subnet-17c8da29
+        - subnet-3707865d
+        - subnet-5e915312
 
 Resources:
   HelloWorldFunction:
@@ -140,8 +140,22 @@ Resources:
         GetCharge:
           Type: Api
           Properties:
-            Path: /charges
+            Path: /charges/{id}
             Method: get
+
+
+  CreateChargeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.createCharge
+      Runtime: python3.6
+      Events:
+        CreateCharge:
+          Type: Api
+          Properties:
+            Path: /charges
+            Method: post
 
 
   GetInventoryFunction:

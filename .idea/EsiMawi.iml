@@ -15,14 +15,14 @@
           <value>
             <DeploySamConfig>
               <option name="autoExecute" value="true" />
-              <option name="bucketName" value="esimawi" />
+              <option name="bucketName" value="esi-mawi" />
               <option name="enabledCapabilities">
                 <list>
                   <option value="IAM" />
                   <option value="NAMED_IAM" />
                 </list>
               </option>
-              <option name="stackName" value="EsiMawi" />
+              <option name="stackName" value="esi-mawi" />
               <option name="useContainer" value="true" />
             </DeploySamConfig>
           </value>

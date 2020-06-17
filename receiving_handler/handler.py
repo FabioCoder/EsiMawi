@@ -45,6 +45,11 @@ def getReceiving(event, context):
         if receiving is None:
             return {
                 'statusCode': 400,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
                 'body': json.dumps("[BadRequest] Ungültige Wareneingang-ID übergeben.")
             }
 
@@ -52,6 +57,11 @@ def getReceiving(event, context):
         result = ReceivingSchema().dump(receiving)
     return {
         "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
         "body": json.dumps(result),
     }
 
@@ -90,6 +100,11 @@ def createReceiving(event, context):
 
     return {
         "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
         "body": json.dumps(result),
     }
 
@@ -103,6 +118,11 @@ def get_allReceiving(event, context):
         result = ReceivingSchema().dump(receivings, many=True)
     return {
         "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
         "body": json.dumps(result),
     }
 
@@ -116,6 +136,11 @@ def getOrder(event, context):
         if order is None:
             return {
                 'statusCode': 400,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
                 'body': json.dumps("[BadRequest] Ungültige Wareneingang-ID übergeben.")
             }
 
@@ -123,6 +148,11 @@ def getOrder(event, context):
         result = OrderSchema().dump(order)
     return {
         "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
         "body": json.dumps(result),
     }
 
@@ -141,6 +171,11 @@ def createOrder(event, context):
         result = OrderSchema().dump(order_new)
     return {
         "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
         "body": json.dumps(result),
     }
 
@@ -154,6 +189,11 @@ def get_allOrders(event, context):
         result = OrderSchema().dump(orders, many=True)
     return {
         "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
         "body": json.dumps(result),
     }
 
@@ -164,6 +204,17 @@ def getCharge(event, context):
 
     with session_scope() as session:
         charge = session.query(Charge).filter(Charge.idcharges==id).first()
+
+        if charge is None:
+            return {
+                "statusCode": 400,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
+                "body": "Die Charge mit der ID " + str(id) + " existiert nicht.",
+            }
 
         if charge.material.art == 'T-Shirt':
             # Serialize the queryset
@@ -176,5 +227,57 @@ def getCharge(event, context):
 
     return {
         "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        "body": json.dumps(result),
+    }
+
+
+def createCharge(event, context):
+    logger.info(event)
+
+    body = ast.literal_eval(event.get('body'))
+    logger.info(body)
+
+    with session_scope() as session:
+        charge_new = ChargeSchema().load(body, session=session)
+
+        chargeShirt = None
+        chargeColor = None
+
+        if charge_new.get('chargeColor') is not None:
+            data = charge_new.get('chargeColor')
+            chargeColor = ChargeColorSchema().load(data=data, session=session)
+        elif charge_new.get('chargeShirt') is not None:
+            chargeShirt = ChargeShirtSchema().load(data=charge_new.get('chargeShirt'), session=session)
+
+        if (chargeShirt is not None) or (chargeColor is not None):
+            chargeHead = Charge(fkmaterials=charge_new.get('fk_materials'))
+            session.add(chargeHead)
+            session.commit()
+
+            if chargeShirt is not None:
+                chargeShirt['fkcharges'] = chargeHead.idcharges
+                session.add(chargeShirt)
+            elif  chargeColor is not None:
+                chargeColor['fkcharges'] = chargeHead.idcharges
+                session.add(chargeColor)
+
+            session.commit()
+
+        charge_new = session.query(Charge).filter(Charge.idcharges==chargeHead.idcharges)
+
+        # Serialize the queryset
+        result = ChargeSchema().dump(charge_new)
+    return {
+        "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
         "body": json.dumps(result),
     }

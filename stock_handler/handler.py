@@ -12,6 +12,7 @@ from schema import Inventory, Place, Stock, Material, StockEntry, GoodsOrder, Go
     PlaceSchema, \
     InventorySchema, StockEntrySchema, BookMaterialSchema, BookProductToStockSchema, ReservationOrderPositionSchema, \
     ReservationOrderSchema, GoodsOrderSchema, BookProductFromStockSchema
+import boto3
 
 rds_host = os.environ['DB_HOST']
 name = os.environ['DB_USER']
@@ -57,6 +58,11 @@ def getInventory(event, context):
 
     return {
         "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
         "body": json.dumps(result, use_decimal=True),
     }
 
@@ -74,6 +80,11 @@ def bookMaterial(event, context):
     if bookMaterial['fkmaterials'] < 50000000:
         return {
             "statusCode": 400,
+            'headers': {
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            },
             "body": {
                 "errorMessage": "Die Buchung von Fertigware mit diesem Service ist nicht erlaubt.",
             }
@@ -93,12 +104,20 @@ def bookProductToStock(event, context):
     schema = BookProductToStockSchema()
     bookProduct = schema.load(data=body)
 
+    logger.info('Start Request')
+
     data = json.dumps({'prodOrderNum': bookProduct.get('productionOrderNr')})
     r = requests.post(ApiProductionUrl, data=data)
+    logger.info('End Request')
 
     if r.status_code != 200:
         return {
             "statusCode": 400,
+            'headers': {
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            },
             "body": 'Fehler bei der Abfrage der ProductionOrderNr: ' + json.dumps(r.json()),
         }
 
@@ -107,12 +126,30 @@ def bookProductToStock(event, context):
     if prodOrder['statusCode'] != 200:
         return {
             "statusCode": 400,
+            'headers': {
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            },
             "body": 'Fehler bei der Abfrage der ProductionOrderNr: ' + json.dumps(r.json()),
         }
 
-    fkmaterials = prodOrder['body'][0]['articleNumber']
-    quantity = prodOrder['body'][0]['quantity']
+    try:
+        fkmaterials = prodOrder['body'][0]['articleNumber']
+        quantity = prodOrder['body'][0]['quantity']
+    except:
+        e = sys.exc_info()[0]
+        return {
+            "statusCode": 400,
+            'headers': {
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            },
+            "body": 'Fehler bei der Abfrage der ProductionOrderNr. Der Rückgabewert ist invalide. :' + str(e)
+        }
 
+    logger.info('Datenbank Änderungen')
     with session_scope() as session:
         query_material = session.query(Material).filter(Material.idmaterials == fkmaterials).first()
 
@@ -144,6 +181,11 @@ def bookProductFromStock(event, context):
         if reservation is None:
             return {
                 "statusCode": 400,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
                 "body": "Die Reservierung existiert nicht.",
             }
 
@@ -155,12 +197,22 @@ def bookProductFromStock(event, context):
         if place is None:
             return {
                 "statusCode": 400,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
                 "body": "Für die Production-Order-Nr. existiert auf dem Lagerplatz kein Bestand.",
             }
 
         if place[0] < reservation.GoodsOrderPosition.quantity:
             return {
                 "statusCode": 400,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
                 "body": "Der Lagerplatz hat nicht genügend Bestand Für die Production-Order-Nr.",
             }
 
@@ -180,6 +232,11 @@ def bookToStock(fkmaterials, fkplaces, opened, quantity, productionOrderNr):
             # Material existiert nicht
             return {
                 "statusCode": 400,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
                 "body": "Die Materialnummer existiert nicht.",
             }
 
@@ -192,6 +249,11 @@ def bookToStock(fkmaterials, fkplaces, opened, quantity, productionOrderNr):
                 # nicht genug Lagerbestand
                 return {
                     "statusCode": 400,
+                    'headers': {
+                        'Access-Control-Allow-Headers': 'Content-Type',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                    },
                     "body": "Der Lagerbestand für das Material ist zu niedrig.",
                 }
 
@@ -205,20 +267,30 @@ def bookToStock(fkmaterials, fkplaces, opened, quantity, productionOrderNr):
         result = StockEntrySchema().dump(stockEntry_new)
         return {
             "statusCode": 200,
+            'headers': {
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            },
             "body": json.dumps(result),
         }
 
 
 def getPackageList(event, context):
     with session_scope() as session:
-        goodsOrdersPositions = session.query(GoodsOrderPosition).\
-            filter((GoodsOrderPosition.done != 1) | (GoodsOrderPosition.done.is_(None))).\
+        goodsOrdersPositions = session.query(GoodsOrderPosition). \
+            filter((GoodsOrderPosition.done != 1) | (GoodsOrderPosition.done.is_(None))). \
             order_by(GoodsOrderPosition.fkgoodsOrders).all()
 
         # Serialize the queryset
         result = ReservationOrderPositionSchema().dump(goodsOrdersPositions, many=True)
     return {
         "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
         "body": json.dumps(result),
     }
 
@@ -235,6 +307,7 @@ def createGoodsOrders(event, context):
 
     reservations = []
     error_messages = []
+    test_list = []
     for order in orders:
         # Eine Order kann folgendes enthalten:
         # - Materialnummer + Menge : Ermitteln von ProductionOrders + Reservieren
@@ -260,12 +333,22 @@ def createGoodsOrders(event, context):
             if error_message.strip() != '':
                 error_messages.append(error_message)
 
+            test = json.dumps({
+                "reservation" : reservation_json,
+                "errorMessage": error_message
+            })
+
+            test_list.append(test)
+
+    result = json.dumps(test_list)
     return {
         "statusCode": 200,
-        "body": {
-            "reservations": json.dumps(reservations),
-            "errorMessage": json.dumps(error_messages),
-        }
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        "body": json.dumps(result),
     }
 
 
@@ -278,7 +361,7 @@ def reserveProductsWithArticelNr(fkmaterials, quantity, session):
         order_by(StockEntry.booking_date).all()
 
     if stock is None:
-        # Problem: Für die Materialnummer gibt es keinen Bestand, daher kan dieser auch nicht ausgeliefert werden.
+        # Problem: Für die Materialnummer gibt es keinen Bestand, daher kann dieser auch nicht ausgeliefert werden.
         return None, 'Für den Artikel ' + str(fkmaterials) + ' gibt es keinen Bestand.'
 
     # Anlegen des Reservierungskopfes

@@ -81,6 +81,8 @@ class GoodsOrderPosition(Base):
 
     goodsOrder = relationship("GoodsOrder", back_populates="goodsOrderPos")
 
+
+
 # SCHEMA
 class MaterialSchema(SQLAlchemyAutoSchema):
     class Meta:
