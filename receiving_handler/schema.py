@@ -27,6 +27,8 @@ class Receiving(Base):
     __tablename__ = 'receivings'
     id = Column(Integer, primary_key=True)
     receiving_date = Column(DateTime, default=dt.now)
+    capturer = Column(String)
+    fksuppliers = Column(Integer)
 
     receivingPos = relationship("ReceivingPosition", back_populates="receiving")
 
@@ -108,6 +110,7 @@ class ReceivingPositionSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = ReceivingPosition
         include_fk = True
+        load_instance = True
 
     material = Nested(lambda: MaterialSchema(), dump_only=True)
 
@@ -116,6 +119,7 @@ class ReceivingSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Receiving
         include_fk = True
+        load_instance = True
 
     receivingPos = Nested(ReceivingPositionSchema(), many=True)
 
@@ -139,18 +143,22 @@ class OrderSchema(SQLAlchemyAutoSchema):
 class ChargeShirtSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = ChargeShirt
+        load_instance = True
 
 
 class ChargeColorSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = ChargeColor
+        load_instance = True
 
 
 class ChargeSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Charge
         include_fk = True
+        load_instance = True
 
     material = Nested(lambda: MaterialSchema(), dump_only=True)
     chargeShirt = Nested(ChargeShirtSchema())
     chargeColor = Nested(ChargeColorSchema())
+

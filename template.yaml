@@ -77,6 +77,20 @@ Resources:
             Path: /receivings
             Method: post
 
+  CreateReceivingPosFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.createReceivingPos
+      Runtime: python3.6
+      Events:
+        CreateReceivingPos:
+          Type: Api
+          Properties:
+            Path: /receivings/pos
+            Method: post
+
+
   GetAllReceivingFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -103,6 +117,7 @@ Resources:
             Path: /orders/{id}
             Method: get
 
+
   CreateOrderFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -110,11 +125,26 @@ Resources:
       Handler: handler.createOrder
       Runtime: python3.6
       Events:
-        CreateReceiving:
+        CreateOrder:
           Type: Api
           Properties:
             Path: /orders
             Method: post
+
+
+  CreateOrderPosFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.createOrderPos
+      Runtime: python3.6
+      Events:
+        CreateOrderPos:
+          Type: Api
+          Properties:
+            Path: /orders/pos
+            Method: post
+
 
   GetAllOrdersFunction:
     Type: AWS::Serverless::Function

@@ -69,35 +69,15 @@ def getReceiving(event, context):
 def createReceiving(event, context):
     logger.info(event)
 
-    body = ast.literal_eval(event.get('body'))
+    body = json.loads(event.get('body'))
     logger.info(body)
 
-    # Ermitteln der Bestellung aus der Anfrage
-    fkorders = body.get('fkorders')
-
     with session_scope() as session:
-        # Erzeugen eines neuen Wareneingangs
-        receiving_new = Receiving()
+        receiving_new = ReceivingSchema().load(body, session=session)
         session.add(receiving_new)
         session.commit()
-
-        receiving_id = receiving_new.id
-
-        # Übernahme der Order Positionen in den Wareneingang
-        orderPositions = session.query(OrderPosition).filter(OrderPosition.fkorders == fkorders)
-
-        idx = 1
-        for position in orderPositions:
-            receivingPos = ReceivingPosition(fkreceivings=receiving_id, position=idx, fkmaterials=position.fkmaterials,
-                                     quantity=position.quantity, checked=0, price=0, fkordersPos=fkorders)
-            idx = idx +1
-            session.add(receivingPos)
-            session.commit()
-
         # Serialize the queryset
-        receiving = session.query(Receiving).filter(Receiving.id == receiving_id).first()
-        result = ReceivingSchema().dump(receiving)
-
+        result = ReceivingSchema().dump(receiving_new)
     return {
         "statusCode": 200,
         'headers': {
@@ -108,6 +88,29 @@ def createReceiving(event, context):
         "body": json.dumps(result),
     }
 
+
+def createReceivingPos(event, context):
+    logger.info(event)
+
+    body = json.loads(event.get('body'))
+    logger.info(body)
+
+    with session_scope() as session:
+        receivingPos_new = ReceivingPositionSchema().load(body, session=session, many=True)
+        for pos in receivingPos_new:
+            session.add(pos)
+        session.commit()
+        # Serialize the queryset
+        result = ReceivingPositionSchema().dump(receivingPos_new, many=True)
+    return {
+        "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        "body": json.dumps(result),
+    }
 
 def get_allReceiving(event, context):
     with session_scope() as session:
@@ -160,7 +163,7 @@ def getOrder(event, context):
 def createOrder(event, context):
     logger.info(event)
 
-    body = ast.literal_eval(event.get('body'))
+    body = json.loads(event.get('body'))
     logger.info(body)
 
     with session_scope() as session:
@@ -169,6 +172,30 @@ def createOrder(event, context):
         session.commit()
         # Serialize the queryset
         result = OrderSchema().dump(order_new)
+    return {
+        "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        "body": json.dumps(result),
+    }
+
+
+def createOrderPos(event, context):
+    logger.info(event)
+
+    body = json.loads(event.get('body'))
+    logger.info(body)
+
+    with session_scope() as session:
+        orderPos_new = OrderPositionSchema().load(body, session=session, many=True)
+        for pos in orderPos_new:
+            session.add(pos)
+        session.commit()
+        # Serialize the queryset
+        result = OrderPositionSchema().dump(orderPos_new, many=True)
     return {
         "statusCode": 200,
         'headers': {
@@ -239,36 +266,13 @@ def getCharge(event, context):
 def createCharge(event, context):
     logger.info(event)
 
-    body = ast.literal_eval(event.get('body'))
+    body = json.loads(event.get('body'))
     logger.info(body)
 
     with session_scope() as session:
         charge_new = ChargeSchema().load(body, session=session)
-
-        chargeShirt = None
-        chargeColor = None
-
-        if charge_new.get('chargeColor') is not None:
-            data = charge_new.get('chargeColor')
-            chargeColor = ChargeColorSchema().load(data=data, session=session)
-        elif charge_new.get('chargeShirt') is not None:
-            chargeShirt = ChargeShirtSchema().load(data=charge_new.get('chargeShirt'), session=session)
-
-        if (chargeShirt is not None) or (chargeColor is not None):
-            chargeHead = Charge(fkmaterials=charge_new.get('fk_materials'))
-            session.add(chargeHead)
-            session.commit()
-
-            if chargeShirt is not None:
-                chargeShirt['fkcharges'] = chargeHead.idcharges
-                session.add(chargeShirt)
-            elif  chargeColor is not None:
-                chargeColor['fkcharges'] = chargeHead.idcharges
-                session.add(chargeColor)
-
-            session.commit()
-
-        charge_new = session.query(Charge).filter(Charge.idcharges==chargeHead.idcharges)
+        session.add(charge_new)
+        session.commit()
 
         # Serialize the queryset
         result = ChargeSchema().dump(charge_new)

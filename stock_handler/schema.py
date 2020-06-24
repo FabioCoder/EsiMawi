@@ -9,6 +9,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+
 # ORM
 class Inventory(Base):
     __tablename__ = 'inventory'
@@ -82,7 +83,6 @@ class GoodsOrderPosition(Base):
     goodsOrder = relationship("GoodsOrder", back_populates="goodsOrderPos")
 
 
-
 # SCHEMA
 class MaterialSchema(SQLAlchemyAutoSchema):
     class Meta:
@@ -150,3 +150,8 @@ class GoodsOrderSchema(Schema):
     productionOrderNr = fields.String()
     fkmaterials = fields.Integer()
     quantity = fields.Integer()
+
+
+class ReservationResponseSchema(Schema):
+    reservation = Nested(ReservationOrderSchema())
+    error_message = fields.String()
