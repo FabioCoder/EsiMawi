@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
-
+dtf = "%Y/%m/%d %H:%M:%S"
 
 # ORM
 class Inventory(Base):
@@ -51,6 +51,7 @@ class Material(Base):
     art = Column(String(45), nullable=False)
 
     inventories = relationship("Inventory", back_populates="material")
+    receivingPos = relationship("ReceivingPosition", back_populates="material")
 
 
 class StockEntry(Base):
@@ -67,7 +68,7 @@ class StockEntry(Base):
 class GoodsOrder(Base):
     __tablename__ = 'goodsOrders'
     idgoodsOrders = Column(Integer, primary_key=True)
-    fkmaterials = Column(Integer, ForeignKey('materials.idmaterials'))
+    fkmaterials = Column(Integer, ForeignKey('materials.idmaterials'), nullable=False)
     creation_date = Column(DateTime, nullable=False, default=dt.now)
 
     goodsOrderPos = relationship("GoodsOrderPosition", back_populates="goodsOrder")
@@ -81,6 +82,30 @@ class GoodsOrderPosition(Base):
     done = Column(TINYINT)
 
     goodsOrder = relationship("GoodsOrder", back_populates="goodsOrderPos")
+
+
+class Receiving(Base):
+    __tablename__ = 'receivings'
+    id = Column(Integer, primary_key=True)
+    receiving_date = Column(DateTime, default=dt.now)
+    capturer = Column(String)
+    fksuppliers = Column(Integer)
+
+    receivingPos = relationship("ReceivingPosition", back_populates="receiving")
+
+
+class ReceivingPosition(Base):
+    __tablename__ = 'receivingsPos'
+    fkreceivings = Column(Integer, ForeignKey('receivings.id'), primary_key=True)
+    position = Column(Integer, primary_key=True)
+    fkmaterials = Column(Integer,  ForeignKey('materials.idmaterials'), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    checked = Column(TINYINT)
+    price = Column(DOUBLE)
+    fkordersPos = Column(Integer, ForeignKey('ordersPos.idordersPos'))
+
+    material = relationship("Material", back_populates="receivingPos")
+    receiving = relationship("Receiving", back_populates="receivingPos")
 
 
 # SCHEMA
@@ -98,6 +123,9 @@ class InventorySchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Inventory
         include_fk = True
+        exclude = ['value_of_materials']
+
+    value_of_materials = auto_field(dump_only=True)
 
     # Override materials field to use a nested representation rather than pks
     material = Nested(lambda: MaterialSchema(), dump_only=True)
@@ -108,6 +136,7 @@ class StockEntrySchema(SQLAlchemyAutoSchema):
     class Meta:
         model = StockEntry
         include_fk = True
+        datetimeformat = dtf
 
 
 class BookMaterialSchema(Schema):

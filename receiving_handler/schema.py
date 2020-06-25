@@ -7,6 +7,7 @@ from datetime import datetime as dt
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
+dtf = "%Y/%m/%d %H:%M:%S"
 
 #ORM
 class Material(Base):
@@ -120,6 +121,7 @@ class ReceivingSchema(SQLAlchemyAutoSchema):
         model = Receiving
         include_fk = True
         load_instance = True
+        datetimeformat = dtf
 
     receivingPos = Nested(ReceivingPositionSchema(), many=True)
 
@@ -135,7 +137,9 @@ class OrderPositionSchema(SQLAlchemyAutoSchema):
 class OrderSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Order
+        include_fk = True
         load_instance = True
+        datetimeformat = dtf
 
     orderPos = Nested(OrderPositionSchema(), many=True)
 

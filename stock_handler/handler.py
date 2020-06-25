@@ -4,14 +4,15 @@ import logging
 import os
 import simplejson as json
 from sqlalchemy import create_engine
-from sqlalchemy import func, update
-from sqlalchemy.orm import sessionmaker, joinedload, contains_eager, raiseload
+from sqlalchemy import func
+from sqlalchemy.orm import sessionmaker, contains_eager, raiseload
 import ast
 from contextlib import contextmanager
 from schema import Inventory, Place, Stock, Material, StockEntry, GoodsOrder, GoodsOrderPosition, MaterialSchema, \
     PlaceSchema, \
     InventorySchema, StockEntrySchema, BookMaterialSchema, BookProductToStockSchema, ReservationOrderPositionSchema, \
-    ReservationOrderSchema, GoodsOrderSchema, BookProductFromStockSchema, ReservationResponseSchema
+    ReservationOrderSchema, GoodsOrderSchema, BookProductFromStockSchema, ReservationResponseSchema, Receiving, \
+    ReceivingPosition
 
 rds_host = os.environ['DB_HOST']
 name = os.environ['DB_USER']
@@ -21,15 +22,17 @@ db_name = os.environ['DB_NAME']
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# Datenbank
 rds_host = os.environ['DB_HOST']
 name = os.environ['DB_USER']
 password = os.environ['DB_PASSWORD']
 db_name = os.environ['DB_NAME']
 
-ApiProductionUrl = 'https://2pkivl4tnh.execute-api.eu-central-1.amazonaws.com/prod/readorderinfo'
-ApiEndpointProdOrder = 'readorderinfo'
-
 engine = create_engine('mysql+mysqlconnector://' + name + ':' + password + '@' + rds_host + '/' + db_name, echo=True)
+
+# Urls der anderen Webservices
+ApiProductionUrl = 'https://2pkivl4tnh.execute-api.eu-central-1.amazonaws.com/prod/readorderinfo'
+ApiVersandUrl = 'https://5club7wre8.execute-api.eu-central-1.amazonaws.com/sales/updatestatus'
 
 
 @contextmanager
@@ -48,12 +51,67 @@ def session_scope():
 
 
 # LAMBDA
+def calcMaterialValue(session, fkmaterials, quantity):
+    """Ermittelt den Wert des Materials mittels des Preises aus den letzten Wareneingängen (LIFO)."""
+    # letzte Wareneingänge mit Preise ermitteln
+    receiving_query = session.query(ReceivingPosition.price, ReceivingPosition.quantity, Receiving.receiving_date).\
+                            filter(ReceivingPosition.fkmaterials == fkmaterials). \
+                            filter(ReceivingPosition.fkreceivings == Receiving.id). \
+                            order_by(Receiving.receiving_date.desc()).all()
+
+    # Keine Wareneingänge vorhanden.
+    if (receiving_query is None) or (len(receiving_query) <= 0):
+        return 0.0
+
+    # Einzelne Wareneingänge verechnen.
+    remaining_quantity = quantity
+    value = 0.0
+    for receiving in receiving_query:
+        # Keine zu verrechnende Menge übrig.
+        if remaining_quantity <= 0:
+            break
+
+        # Kein Preis vorhanden. Ermittlung abbrechen, da die Kennzahl nun nicht valide berechnet werden kann.
+        if receiving.price is None:
+            value = 0.0
+            break
+
+        # Wareneingang hat keine Menge.
+        if receiving.quantity <= 0:
+            continue
+
+        # Menge ermitteln:
+        current_quantity = 0
+        if receiving.quantity >= remaining_quantity:
+            # Die Menge des Wareingangs ist größer als die Restmenge. -> Die komplette Restmenge mit dem
+            # Preis des Wareingangs verrechnen.
+            current_quantity = remaining_quantity
+        elif remaining_quantity > receiving.quantity:
+            # Die Restmenge ist größer als die Menge des Wareingangs -> Die komplette Menge des Wareingangs
+            # verrechnen.
+            current_quantity = receiving.quantity
+
+        # Wert summieren.
+        value = value + (current_quantity * float(receiving.price))
+        remaining_quantity = remaining_quantity - current_quantity
+
+    if remaining_quantity <= 0:
+        return value
+    else:
+        return 0.0
+
+
 def getInventory(event, context):
+    """Gibt das aktuelle Inventar zurück."""
     with session_scope() as session:
-        inventory = session.query(Inventory).order_by(Inventory.fkplaces)
+        inventory = session.query(Inventory).order_by(Inventory.fkplaces).all()
 
         # Serialize the queryset
         result = InventorySchema().dump(inventory, many=True)
+
+        # Ermittle den Wert der Position mittels dem Preis aus dem Wareneingang
+        for pos in result:
+            pos['value_of_materials'] = calcMaterialValue(session, pos.get('fkmaterials'), pos.get('quantity'))
 
     return {
         "statusCode": 200,
@@ -66,8 +124,8 @@ def getInventory(event, context):
     }
 
 
-# Buchen von Material mit Materialnummer
 def bookMaterial(event, context):
+    """Zu- und Abbuchung von Material."""
     logger.info(event)
 
     body = ast.literal_eval(event.get('body'))
@@ -93,8 +151,8 @@ def bookMaterial(event, context):
                        opened=bookMaterial['opened'], quantity=bookMaterial['quantity'], productionOrderNr='')
 
 
-# Zubuchen von Produkten mit ProductionOrderNr
 def bookProductToStock(event, context):
+    """Zubuchung von Produkten mit Produktions-Order-Nr."""
     logger.info(event)
 
     body = ast.literal_eval(event.get('body'))
@@ -159,11 +217,17 @@ def bookProductToStock(event, context):
             session.add(material_new)
             session.commit()
 
+    data = json.dumps(
+        {'prodOrderNr': bookProduct.get('productionOrderNr'), 'statusID': 4, 'statusDescription': 'Auf Lager'})
+    r = requests.patch(ApiVersandUrl, data=data)
+    logger.info(json.dumps(r.json()))
+    logger.info('End Request')
+
     return bookToStock(fkmaterials, bookProduct['fkplaces'], 0, quantity, bookProduct['productionOrderNr'])
 
 
-# Abbuchen eines reservierten Bestands
 def bookProductFromStock(event, context):
+    """Abbuchen von Produkten mit Produktions-Order-Nr. und Reservierung."""
     logger.info(event)
 
     body = ast.literal_eval(event.get('body'))
@@ -223,6 +287,7 @@ def bookProductFromStock(event, context):
 
 
 def bookToStock(fkmaterials, fkplaces, opened, quantity, productionOrderNr):
+    """Allgemeine Lagerbuchungsfunktion."""
     with session_scope() as session:
         # Prüfen ob das Material existiert
         query_material = session.query(Material).filter(Material.idmaterials == fkmaterials).first()
@@ -276,6 +341,7 @@ def bookToStock(fkmaterials, fkplaces, opened, quantity, productionOrderNr):
 
 
 def getPackageList(event, context):
+    """Gibt alle offenen Reservierungen bzw. Bestellungen des Versands als Packliste zurück."""
     with session_scope() as session:
         goodsOrdersPositions = session.query(GoodsOrderPosition). \
             filter((GoodsOrderPosition.done != 1) | (GoodsOrderPosition.done.is_(None))). \
@@ -294,8 +360,9 @@ def getPackageList(event, context):
     }
 
 
-# Reservieren von Produkten aus dem Lager entweder mit Materialnummer + Menge oder ProductionOrderNr
 def createGoodsOrders(event, context):
+    """Anlage von einer oder mehreren Reservierungen/Bestellungen von Produkten entweder mit Materialnummer + Menge
+    oder ProductionOrderNr """
     logger.info(event)
 
     body = ast.literal_eval(event.get('body'))
@@ -316,20 +383,20 @@ def createGoodsOrders(event, context):
         for order in orders:
             if (order.get('fkmaterials') is not None) and (order.get('quantity') is not None):
                 reservation_id, error_message = reserveProductsWithArticelNr(fkmaterials=order.get('fkmaterials'),
-                                                                          quantity=order.get('quantity'),
-                                                                          session=session)
+                                                                             quantity=order.get('quantity'),
+                                                                             session=session)
             elif order.get('productionOrderNr') is not None:
                 reservation_id, error_message = reserveProductsWithProdOrderNr(order.get('productionOrderNr'),
-                                                                            session=session)
+                                                                               session=session)
             else:
                 reservation = None
                 error_messages = 'Bad Request.'
 
             if reservation_id > 0:
                 reservation = session.query(GoodsOrder).options(
-                                    contains_eager(GoodsOrder.goodsOrderPos),
-                                    raiseload('*')
-                                ).filter(GoodsOrder.idgoodsOrders == reservation_id).first()
+                    contains_eager(GoodsOrder.goodsOrderPos),
+                    raiseload('*')
+                ).filter(GoodsOrder.idgoodsOrders == reservation_id).first()
 
             response.append(dict(error_message=error_message, reservation=reservation))
 
@@ -347,6 +414,7 @@ def createGoodsOrders(event, context):
 
 
 def reserveProductsWithArticelNr(fkmaterials, quantity, session):
+    """Reservierung von Produkten mit Materialnummer und Menge."""
     stock = session.query(func.ifnull(func.sum(StockEntry.quantity), 0),
                           func.min(StockEntry.booking_date), StockEntry.productionOrderNr, StockEntry.fkmaterials). \
         filter((StockEntry.productionOrderNr != '') and (StockEntry.fkmaterials == fkmaterials)). \
@@ -402,8 +470,6 @@ def reserveProductsWithArticelNr(fkmaterials, quantity, session):
         session.add(new_goodsOrderPos)
         remaining_quantity = remaining_quantity - booked_stock
 
-
-
     if remaining_quantity > 0:
         # Fehler:  Der Bestand für die Reservierung ist nicht ausreichend!
         return fkgoodsOrders, 'Der Bestand für den Artikel ' + str(fkmaterials) + \
@@ -413,6 +479,7 @@ def reserveProductsWithArticelNr(fkmaterials, quantity, session):
 
 
 def reserveProductsWithProdOrderNr(ProductionOrderNr, session):
+    """Reservierung von Produkten mit ProductionOrderNr."""
     query_StockEntry = session.query(func.ifnull(func.sum(StockEntry.quantity), 0), StockEntry.fkmaterials).filter(
         StockEntry.productionOrderNr == ProductionOrderNr).group_by(StockEntry.fkmaterials).first()
 

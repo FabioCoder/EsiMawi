@@ -1,10 +1,8 @@
 import simplejson as json
-import sys
 import logging
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import ast
 from contextlib import contextmanager
 from schema import Material, Receiving, ReceivingPosition, Order, OrderPosition, Charge, ChargeShirt, ChargeColor, \
     MaterialSchema, ReceivingSchema, ReceivingPositionSchema, OrderSchema, OrderPositionSchema, ChargeSchema, \
@@ -13,6 +11,7 @@ from schema import Material, Receiving, ReceivingPosition, Order, OrderPosition,
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# Datenbank
 rds_host = os.environ['DB_HOST']
 name = os.environ['DB_USER']
 password = os.environ['DB_PASSWORD']
@@ -37,6 +36,7 @@ def session_scope():
 
 
 def getReceiving(event, context):
+    """Gibt den Wareneingang mit einer bestimmten ID zurück."""
     params = event["pathParameters"]
     id = params["id"]
 
@@ -67,6 +67,7 @@ def getReceiving(event, context):
 
 
 def createReceiving(event, context):
+    """Anlage oder Änderung eines Wareneingangs."""
     logger.info(event)
 
     body = json.loads(event.get('body'))
@@ -90,18 +91,18 @@ def createReceiving(event, context):
 
 
 def createReceivingPos(event, context):
+    """Anlage oder Änderung einer Wareneingangsposition."""
     logger.info(event)
 
     body = json.loads(event.get('body'))
     logger.info(body)
 
     with session_scope() as session:
-        receivingPos_new = ReceivingPositionSchema().load(body, session=session, many=True)
-        for pos in receivingPos_new:
-            session.add(pos)
+        receivingPos_new = ReceivingPositionSchema().load(body, session=session)
+        session.add(receivingPos_new)
         session.commit()
         # Serialize the queryset
-        result = ReceivingPositionSchema().dump(receivingPos_new, many=True)
+        result = ReceivingPositionSchema().dump(receivingPos_new)
     return {
         "statusCode": 200,
         'headers': {
@@ -113,6 +114,7 @@ def createReceivingPos(event, context):
     }
 
 def get_allReceiving(event, context):
+    """Gibt alle Wareneingänge zurück."""
     with session_scope() as session:
         receivings = session.query(Receiving).with_entities(Receiving.id, Receiving.receiving_date).\
             order_by(Receiving.receiving_date)
@@ -131,6 +133,7 @@ def get_allReceiving(event, context):
 
 
 def getOrder(event, context):
+    """Gibt eine Bestellung mit einer bestimmten ID zurück."""
     params = event["pathParameters"]
     id = params["id"]
 
@@ -161,6 +164,7 @@ def getOrder(event, context):
 
 
 def createOrder(event, context):
+    """Anlage oder Änderung einer Bestellung."""
     logger.info(event)
 
     body = json.loads(event.get('body'))
@@ -184,6 +188,7 @@ def createOrder(event, context):
 
 
 def createOrderPos(event, context):
+    """Anlage oder Änderung einer Bestellposition."""
     logger.info(event)
 
     body = json.loads(event.get('body'))
@@ -208,6 +213,7 @@ def createOrderPos(event, context):
 
 
 def get_allOrders(event, context):
+    """Gibt alle Bestellungen zurück."""
     with session_scope() as session:
         orders = session.query(Order).with_entities(Order.idorders, Order.order_date, Order.fksupplier).\
             order_by(Order.order_date)
@@ -226,6 +232,7 @@ def get_allOrders(event, context):
 
 
 def getCharge(event, context):
+    """Gibt eine Charge mit einer bestimmten ID zurück."""
     params = event["pathParameters"]
     id = params["id"]
 
@@ -264,6 +271,7 @@ def getCharge(event, context):
 
 
 def createCharge(event, context):
+    """Anlage oder Änderung einer Charge."""
     logger.info(event)
 
     body = json.loads(event.get('body'))
