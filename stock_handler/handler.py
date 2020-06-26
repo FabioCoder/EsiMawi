@@ -142,9 +142,7 @@ def bookMaterial(event, context):
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
             },
-            "body": {
-                "errorMessage": "Die Buchung von Fertigware mit diesem Service ist nicht erlaubt.",
-            }
+            "body":  json.dumps({"message": "Die Buchung von Fertigware mit diesem Service ist nicht erlaubt."}),
         }
 
     return bookToStock(fkmaterials=bookMaterial['fkmaterials'], fkplaces=bookMaterial['fkplaces'],
@@ -175,7 +173,7 @@ def bookProductToStock(event, context):
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
             },
-            "body": 'Fehler bei der Abfrage der ProductionOrderNr: ' + json.dumps(r.json()),
+            "body": json.dumps({"message": 'Fehler bei der Abfrage der ProductionOrderNr. ' + json.dumps(r.json())}),
         }
 
     prodOrder = json.loads(r.text)
@@ -188,7 +186,7 @@ def bookProductToStock(event, context):
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
             },
-            "body": 'Fehler bei der Abfrage der ProductionOrderNr: ' + json.dumps(r.json()),
+            "body": json.dumps({"message":'Fehler bei der Abfrage der ProductionOrderNr: ' + json.dumps(r.json())}),
         }
 
     try:
@@ -203,7 +201,8 @@ def bookProductToStock(event, context):
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
             },
-            "body": 'Fehler bei der Abfrage der ProductionOrderNr. Der Rückgabewert ist invalide. :' + str(e)
+            "body": json.dumps({"message": 'Fehler bei der Abfrage der ProductionOrderNr. Der Rückgabewert ist '
+                                           'invalide. :' + str(e)})
         }
 
     logger.info('Datenbank Änderungen')
@@ -249,7 +248,7 @@ def bookProductFromStock(event, context):
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
                 },
-                "body": "Die Reservierung existiert nicht.",
+                "body": json.dumps({"message": "Die Reservierung existiert nicht."}),
             }
 
         place = session.query(func.ifnull(func.sum(StockEntry.quantity), 0)). \
@@ -265,7 +264,7 @@ def bookProductFromStock(event, context):
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
                 },
-                "body": "Für die Production-Order-Nr. existiert auf dem Lagerplatz kein Bestand.",
+                "body": json.dumps({"message":"Für die Production-Order-Nr. existiert auf dem Lagerplatz kein Bestand."}),
             }
 
         if place[0] < reservation.GoodsOrderPosition.quantity:
@@ -276,7 +275,7 @@ def bookProductFromStock(event, context):
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
                 },
-                "body": "Der Lagerplatz hat nicht genügend Bestand Für die Production-Order-Nr.",
+                "body": json.dumps({"message":"Der Lagerplatz hat nicht genügend Bestand Für die Production-Order-Nr."}),
             }
 
         reservation.GoodsOrderPosition.done = 1
@@ -301,7 +300,7 @@ def bookToStock(fkmaterials, fkplaces, opened, quantity, productionOrderNr):
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'OPTIONS,POST,GET, DELETE'
                 },
-                "body": "Die Materialnummer existiert nicht.",
+                "body": json.dumps({"message": "Die Materialnummer existiert nicht."}),
             }
 
         if quantity < 0:
@@ -318,7 +317,7 @@ def bookToStock(fkmaterials, fkplaces, opened, quantity, productionOrderNr):
                         'Access-Control-Allow-Origin': '*',
                         'Access-Control-Allow-Methods': 'OPTIONS,POST,GET, DELETE'
                     },
-                    "body": "Der Lagerbestand für das Material ist zu niedrig.",
+                    "body": json.dumps({"message": "Der Lagerbestand für das Material ist zu niedrig."}),
                 }
 
         # Buchen des Produktionsauftrags
@@ -382,21 +381,15 @@ def createGoodsOrders(event, context):
 
         for order in orders:
             if (order.get('fkmaterials') is not None) and (order.get('quantity') is not None):
-                reservation_id, error_message = reserveProductsWithArticelNr(fkmaterials=order.get('fkmaterials'),
+                reservation, error_message = reserveProductsWithArticelNr(fkmaterials=order.get('fkmaterials'),
                                                                              quantity=order.get('quantity'),
                                                                              session=session)
             elif order.get('productionOrderNr') is not None:
-                reservation_id, error_message = reserveProductsWithProdOrderNr(order.get('productionOrderNr'),
+                reservation, error_message = reserveProductsWithProdOrderNr(order.get('productionOrderNr'),
                                                                                session=session)
             else:
                 reservation = None
-                error_messages = 'Bad Request.'
-
-            if reservation_id > 0:
-                reservation = session.query(GoodsOrder).options(
-                    contains_eager(GoodsOrder.goodsOrderPos),
-                    raiseload('*')
-                ).filter(GoodsOrder.idgoodsOrders == reservation_id).first()
+                error_message = 'Bad Request.'
 
             response.append(dict(error_message=error_message, reservation=reservation))
 
@@ -424,7 +417,7 @@ def reserveProductsWithArticelNr(fkmaterials, quantity, session):
 
     if stock is None:
         # Problem: Für die Materialnummer gibt es keinen Bestand, daher kann dieser auch nicht ausgeliefert werden.
-        return -1, 'Für den Artikel ' + str(fkmaterials) + ' gibt es keinen Bestand.'
+        return None, 'Für den Artikel ' + str(fkmaterials) + ' gibt es keinen Bestand.'
 
     # Anlegen des Reservierungskopfes
     new_goodsOrder = GoodsOrder(fkmaterials=fkmaterials)
@@ -472,10 +465,10 @@ def reserveProductsWithArticelNr(fkmaterials, quantity, session):
 
     if remaining_quantity > 0:
         # Fehler:  Der Bestand für die Reservierung ist nicht ausreichend!
-        return fkgoodsOrders, 'Der Bestand für den Artikel ' + str(fkmaterials) + \
-               ' ist nicht ausreichend. Insgesamt  konnten' + str(remaining_quantity) + ' Stück nicht gebucht werden.'
+        return new_goodsOrder, 'Der Bestand für den Artikel ' + str(fkmaterials) + \
+               ' ist nicht ausreichend. Insgesamt  konnten ' + str(remaining_quantity) + ' Stück nicht gebucht werden.'
 
-    return fkgoodsOrders, ''
+    return new_goodsOrder, ''
 
 
 def reserveProductsWithProdOrderNr(ProductionOrderNr, session):
@@ -485,7 +478,7 @@ def reserveProductsWithProdOrderNr(ProductionOrderNr, session):
 
     if query_StockEntry[0] == 0:
         # Der Produktionsauftrag existiert nicht (mehr)
-        return -1, 'Der Produktionsauftrag ' + ProductionOrderNr + ' existiert nicht.'
+        return None, 'Der Produktionsauftrag ' + ProductionOrderNr + ' existiert nicht.'
 
     query_Reservations = session.query(func.ifnull(func.sum(GoodsOrderPosition.quantity), 0)). \
         filter((GoodsOrderPosition.productionOrderNr == ProductionOrderNr) & (
@@ -500,7 +493,7 @@ def reserveProductsWithProdOrderNr(ProductionOrderNr, session):
 
     if not_reserved_stock <= 0:
         # Der Produktionauftrag wurde vollständig reserviert
-        return -1, 'Der Produktionsauftrag ' + ProductionOrderNr + ' wurde bereits vollständig reserviert.'
+        return None, 'Der Produktionsauftrag ' + ProductionOrderNr + ' wurde bereits vollständig reserviert.'
 
     # Anlegen des Reservierungskopfes
     new_goodsOrder = GoodsOrder(fkmaterials=query_StockEntry[1])
@@ -514,4 +507,4 @@ def reserveProductsWithProdOrderNr(ProductionOrderNr, session):
                                            quantity=not_reserved_stock)
     session.add(new_goodsOrderPos)
 
-    return fkgoodsOrders, ''
+    return new_goodsOrder, ''

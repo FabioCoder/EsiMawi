@@ -24,15 +24,16 @@ class Material(Base):
     orderPos = relationship("OrderPosition", back_populates="material")
     charges = relationship("Charge", back_populates="material")
 
+
 class Receiving(Base):
     __tablename__ = 'receivings'
     id = Column(Integer, primary_key=True)
     receiving_date = Column(DateTime, default=dt.now)
     capturer = Column(String)
-    fksuppliers = Column(Integer)
+    fksuppliers = Column(Integer, ForeignKey('suppliers.idsuppliers'))
 
     receivingPos = relationship("ReceivingPosition", back_populates="receiving")
-
+    supplier = relationship("Supplier", back_populates="receivings")
 
 class ReceivingPosition(Base):
     __tablename__ = 'receivingsPos'
@@ -54,9 +55,10 @@ class Order(Base):
     order_date = Column(DateTime, default=dt, nullable=False)
     capturer = Column(String(10))
     state = Column(String(7))
-    fksupplier = Column(Integer)
+    fksuppliers = Column(Integer, ForeignKey('suppliers.idsuppliers'))
 
     orderPos = relationship("OrderPosition", back_populates="order")
+    supplier = relationship("Supplier", back_populates="orders")
 
 
 class OrderPosition(Base):
@@ -101,10 +103,28 @@ class ChargeColor(Base):
     charge = relationship("Charge", back_populates="chargeColor")
 
 
+class Supplier(Base):
+    __tablename__ = 'suppliers'
+    idsuppliers = Column(Integer, primary_key=True)
+    name = Column(String(100))
+    address = Column(String(255))
+    postcode = Column(String(20))
+    ort = Column(String(45))
+    contact = Column(String(100))
+    phone = Column(String(45))
+    fax = Column(String(45))
+    email = Column(String(45))
+
+    receivings = relationship("Receiving", back_populates="supplier")
+    orders = relationship("Order", back_populates="supplier")
+
+
 #SCHEMA
 class MaterialSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Material
+        include_fk = True
+        load_instance = True
 
 
 class ReceivingPositionSchema(SQLAlchemyAutoSchema):
@@ -124,6 +144,8 @@ class ReceivingSchema(SQLAlchemyAutoSchema):
         datetimeformat = dtf
 
     receivingPos = Nested(ReceivingPositionSchema(), many=True)
+    supplier = Nested(lambda: SupplierSchema(), dump_only=True,
+                      exclude=('address', 'postcode', 'contact', 'email', 'phone', 'fax', ))
 
 
 class OrderPositionSchema(SQLAlchemyAutoSchema):
@@ -142,6 +164,8 @@ class OrderSchema(SQLAlchemyAutoSchema):
         datetimeformat = dtf
 
     orderPos = Nested(OrderPositionSchema(), many=True)
+    supplier = Nested(lambda: SupplierSchema(), dump_only=True,
+                      exclude=('address', 'postcode', 'contact', 'email', 'phone', 'fax',))
 
 
 class ChargeShirtSchema(SQLAlchemyAutoSchema):
@@ -165,4 +189,11 @@ class ChargeSchema(SQLAlchemyAutoSchema):
     material = Nested(lambda: MaterialSchema(), dump_only=True)
     chargeShirt = Nested(ChargeShirtSchema())
     chargeColor = Nested(ChargeColorSchema())
+
+
+class SupplierSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Supplier
+        include_fk = True
+        load_instance = True
 

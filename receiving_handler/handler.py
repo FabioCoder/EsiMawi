@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
 from schema import Material, Receiving, ReceivingPosition, Order, OrderPosition, Charge, ChargeShirt, ChargeColor, \
     MaterialSchema, ReceivingSchema, ReceivingPositionSchema, OrderSchema, OrderPositionSchema, ChargeSchema, \
-    ChargeShirtSchema, ChargeColorSchema
+    ChargeShirtSchema, ChargeColorSchema, Supplier, SupplierSchema
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -41,7 +41,7 @@ def getReceiving(event, context):
     id = params["id"]
 
     with session_scope() as session:
-        receiving = session.query(Receiving).filter(Receiving.id==id).first()
+        receiving = session.query(Receiving).filter(Receiving.id == id).first()
         if receiving is None:
             return {
                 'statusCode': 400,
@@ -50,7 +50,7 @@ def getReceiving(event, context):
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
                 },
-                'body': json.dumps("[BadRequest] Ungültige Wareneingang-ID übergeben.")
+                'body': json.dumps({"message": "[BadRequest] Ungültige Wareneingang-ID übergeben."})
             }
 
         # Serialize the queryset
@@ -113,10 +113,11 @@ def createReceivingPos(event, context):
         "body": json.dumps(result),
     }
 
+
 def get_allReceiving(event, context):
     """Gibt alle Wareneingänge zurück."""
     with session_scope() as session:
-        receivings = session.query(Receiving).with_entities(Receiving.id, Receiving.receiving_date).\
+        receivings = session.query(Receiving).with_entities(Receiving.id, Receiving.receiving_date). \
             order_by(Receiving.receiving_date)
 
         # Serialize the queryset
@@ -138,7 +139,7 @@ def getOrder(event, context):
     id = params["id"]
 
     with session_scope() as session:
-        order = session.query(Order).filter(Order.idorders==id).first()
+        order = session.query(Order).filter(Order.idorders == id).first()
         if order is None:
             return {
                 'statusCode': 400,
@@ -147,7 +148,7 @@ def getOrder(event, context):
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
                 },
-                'body': json.dumps("[BadRequest] Ungültige Wareneingang-ID übergeben.")
+                'body': json.dumps({"message": "[BadRequest] Ungültige Wareneingang-ID übergeben."})
             }
 
         # Serialize the queryset
@@ -215,7 +216,7 @@ def createOrderPos(event, context):
 def get_allOrders(event, context):
     """Gibt alle Bestellungen zurück."""
     with session_scope() as session:
-        orders = session.query(Order).with_entities(Order.idorders, Order.order_date, Order.fksupplier).\
+        orders = session.query(Order).with_entities(Order.idorders, Order.order_date, Order.fksupplier). \
             order_by(Order.order_date)
 
         # Serialize the queryset
@@ -237,7 +238,7 @@ def getCharge(event, context):
     id = params["id"]
 
     with session_scope() as session:
-        charge = session.query(Charge).filter(Charge.idcharges==id).first()
+        charge = session.query(Charge).filter(Charge.idcharges == id).first()
 
         if charge is None:
             return {
@@ -247,7 +248,7 @@ def getCharge(event, context):
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
                 },
-                "body": "Die Charge mit der ID " + str(id) + " existiert nicht.",
+                "body": json.dumps({"message": "Die Charge mit der ID " + str(id) + " existiert nicht."}),
             }
 
         if charge.material.art == 'T-Shirt':
@@ -284,6 +285,156 @@ def createCharge(event, context):
 
         # Serialize the queryset
         result = ChargeSchema().dump(charge_new)
+    return {
+        "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        "body": json.dumps(result),
+    }
+
+
+def getMaterial(event, context):
+    """Gibt ein Material mit einer bestimmten ID zurück."""
+    params = event["pathParameters"]
+    id = params["id"]
+
+    with session_scope() as session:
+        material = session.query(Material).filter(Material.idmaterials == id).first()
+        if material is None:
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
+                'body': json.dumps({"message": "[BadRequest] Ungültige Material-ID übergeben."})
+            }
+
+        # Serialize the queryset
+        result = MaterialSchema().dump(material)
+    return {
+        "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        "body": json.dumps(result),
+    }
+
+
+def get_allMaterials(event, context):
+    """Gibt alle Materialien zurück."""
+    with session_scope() as session:
+        materials = session.query(Material).with_entities(Material.idmaterials, Material.name, Material.art). \
+            order_by(Material.idmaterials)
+
+        # Serialize the queryset
+        result = MaterialSchema().dump(materials, many=True)
+    return {
+        "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        "body": json.dumps(result),
+    }
+
+
+def createMaterial(event, context):
+    """Anlage oder Änderung eines Materials."""
+    logger.info(event)
+
+    body = json.loads(event.get('body'))
+    logger.info(body)
+
+    with session_scope() as session:
+        material_new = MaterialSchema().load(body, session=session)
+        session.add(material_new)
+        session.commit()
+
+        # Serialize the queryset
+        result = MaterialSchema().dump(material_new)
+    return {
+        "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        "body": json.dumps(result),
+    }
+
+
+def getSupplier(event, context):
+    """Gibt einen Lieferanten mit einer bestimmten ID zurück."""
+    params = event["pathParameters"]
+    id = params["id"]
+
+    with session_scope() as session:
+        supplier = session.query(Supplier).filter(Supplier.idsuppliers == id).first()
+        if supplier is None:
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
+                'body': json.dumps({"message": "[BadRequest] Ungültige Lieferanten-ID übergeben."})
+            }
+
+        # Serialize the queryset
+        result = SupplierSchema().dump(supplier)
+    return {
+        "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        "body": json.dumps(result),
+    }
+
+
+def get_allSuppliers(event, context):
+    """Gibt alle Lieferanten zurück."""
+    with session_scope() as session:
+        suppliers = session.query(Supplier).with_entities(Supplier.idsuppliers, Supplier.name, Supplier.ort). \
+            order_by(Supplier.idsuppliers)
+
+        # Serialize the queryset
+        result = SupplierSchema().dump(suppliers, many=True)
+    return {
+        "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        "body": json.dumps(result),
+    }
+
+
+def createSupplier(event, context):
+    """Anlage oder Änderung eines lieferanten."""
+    logger.info(event)
+
+    body = json.loads(event.get('body'))
+    logger.info(body)
+
+    with session_scope() as session:
+        supplier_new = SupplierSchema().load(body, session=session)
+        session.add(supplier_new)
+        session.commit()
+
+        # Serialize the queryset
+        result = SupplierSchema().dump(supplier_new)
     return {
         "statusCode": 200,
         'headers': {

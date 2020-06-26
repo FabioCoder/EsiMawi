@@ -173,7 +173,6 @@ Resources:
             Path: /charges/{id}
             Method: get
 
-
   CreateChargeFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -187,6 +186,83 @@ Resources:
             Path: /charges
             Method: post
 
+  GetMaterialFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.getMaterial
+      Runtime: python3.6
+      Events:
+        GetMaterial:
+          Type: Api
+          Properties:
+            Path: /materials/{id}
+            Method: get
+
+  GetAllMaterialsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.get_allMaterials
+      Runtime: python3.6
+      Events:
+        GetAllMaterials:
+          Type: Api
+          Properties:
+            Path: /materials
+            Method: get
+
+  CreateMaterialFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.createMaterial
+      Runtime: python3.6
+      Events:
+        CreateMaterial:
+          Type: Api
+          Properties:
+            Path: /materials
+            Method: post
+
+  GetSupplierFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.getSupplier
+      Runtime: python3.6
+      Events:
+        GetSupplier:
+          Type: Api
+          Properties:
+            Path: /suppliers/{id}
+            Method: get
+
+  GetAllSuppliersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.get_allSuppliers
+      Runtime: python3.6
+      Events:
+        GetAllSuppliers:
+          Type: Api
+          Properties:
+            Path: /suppliers
+            Method: get
+
+  CreateSupplierFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: receiving_handler/
+      Handler: handler.createSupplier
+      Runtime: python3.6
+      Events:
+        CreateSupplier:
+          Type: Api
+          Properties:
+            Path: /suppliers
+            Method: post
 
   GetInventoryFunction:
     Type: AWS::Serverless::Function
