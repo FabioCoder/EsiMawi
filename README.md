@@ -4,23 +4,19 @@ Die ist der Microservice des Bereichs Materialwirtschaft im Projekt der Vorlesun
 
 ### Prerequisites
 
-* [AWS Account]
-* [MySQL Datenbank]
+* AWS Account
+* MySQL Datenbank
 
 Tools:
-* [PyCharm]
-* [AWS Toolkit for JetBrains]
+* PyCharm
+* AWS Toolkit for JetBrains
 * [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html)
 * [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
 * [Docker Desktop](https://docs.docker.com/get-docker/)
 
-### Installing
+### [Installing](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/key-tasks.html)
 
-Anleitung: https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/key-tasks.html
-
-## Deployment
-
-Anleitung: https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/key-tasks.html#key-tasks-lambda-local
+## [Deployment](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/key-tasks.html#key-tasks-lambda-local)
 
 ## Built With
 
