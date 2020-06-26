@@ -14,9 +14,12 @@ Tools:
 * [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
 * [Docker Desktop](https://docs.docker.com/get-docker/)
 
-### [Installing](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/key-tasks.html)
+### Installing
+[Schritt für Schritt Anleitung](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/key-tasks.html)
 
-## [Deployment](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/key-tasks.html#key-tasks-lambda-local)
+## Deployment
+
+[Schritt für Schritt Anleitung](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/key-tasks.html#key-tasks-lambda-local)
 
 ## Built With
 
