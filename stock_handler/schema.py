@@ -30,6 +30,7 @@ class Place(Base):
 
     inventories = relationship("Inventory", back_populates="place")
     stocks = relationship("Stock", back_populates="place")
+    reservations = relationship('GoodsOrderPosition', back_populates="place")
 
 
 class Stock(Base):
@@ -78,10 +79,12 @@ class GoodsOrderPosition(Base):
     __tablename__ = 'goodsOrdersPos'
     fkgoodsOrders = Column(Integer, ForeignKey('goodsOrders.idgoodsOrders'), primary_key=True)
     productionOrderNr = Column(String, primary_key=True)
-    quantity = Column(Integer)
+    quantity = Column(Integer,  nullable=False)
     done = Column(TINYINT)
+    fkplaces = Column(Integer, ForeignKey('places.idplaces'), primary_key=True)
 
     goodsOrder = relationship("GoodsOrder", back_populates="goodsOrderPos")
+    place = relationship('Place', back_populates="reservations")
 
 
 class Receiving(Base):

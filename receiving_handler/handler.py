@@ -216,7 +216,7 @@ def createOrderPos(event, context):
 def get_allOrders(event, context):
     """Gibt alle Bestellungen zurück."""
     with session_scope() as session:
-        orders = session.query(Order).with_entities(Order.idorders, Order.order_date, Order.fksupplier). \
+        orders = session.query(Order).with_entities(Order.idorders, Order.order_date, Order.fksuppliers). \
             order_by(Order.order_date)
 
         # Serialize the queryset
