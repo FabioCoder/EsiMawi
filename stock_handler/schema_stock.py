@@ -10,6 +10,7 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 dtf = "%Y/%m/%d %H:%M:%S"
 
+
 # ORM
 class Inventory(Base):
     __tablename__ = 'inventory'

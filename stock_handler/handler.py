@@ -3,16 +3,13 @@ import sys
 import logging
 import os
 import simplejson as json
-from sqlalchemy import create_engine
-from sqlalchemy import func
-from sqlalchemy.orm import sessionmaker, contains_eager, raiseload
+from sqlalchemy import create_engine, func
+from sqlalchemy.orm import sessionmaker
 import ast
 from contextlib import contextmanager
-from schema import Inventory, Place, Stock, Material, StockEntry, GoodsOrder, GoodsOrderPosition, MaterialSchema, \
-    PlaceSchema, \
+from schema_stock import Inventory, Material, StockEntry, GoodsOrder, GoodsOrderPosition, \
     InventorySchema, StockEntrySchema, BookMaterialSchema, BookProductToStockSchema, ReservationOrderPositionSchema, \
-    ReservationOrderSchema, GoodsOrderSchema, BookProductFromStockSchema, ReservationResponseSchema, Receiving, \
-    ReceivingPosition
+    GoodsOrderSchema, BookProductFromStockSchema, ReservationResponseSchema, Receiving, ReceivingPosition
 
 rds_host = os.environ['DB_HOST']
 name = os.environ['DB_USER']
@@ -50,9 +47,9 @@ def session_scope():
         session.close()
 
 
-# LAMBDA
 def calcMaterialValue(session, fkmaterials, quantity):
     """Ermittelt den Wert des Materials mittels des Preises aus den letzten Wareneingängen (LIFO)."""
+
     # letzte Wareneingänge mit Preise ermitteln
     receiving_query = session.query(ReceivingPosition.price, ReceivingPosition.quantity, Receiving.receiving_date). \
         filter(ReceivingPosition.fkmaterials == fkmaterials). \
@@ -101,8 +98,28 @@ def calcMaterialValue(session, fkmaterials, quantity):
         return 0.0
 
 
-def getInventory(event, context):
-    """Gibt das aktuelle Inventar zurück."""
+def getInventory(event, context):  # Lambda Function
+    """Gibt das aktuelle Inventar zurück.
+
+    Parameters
+    ----------
+    event: dict, required
+        API Gateway Lambda Proxy Input Format
+
+        Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
+
+    context: object, required
+        Lambda Context runtime methods and attributes
+
+        Context doc: https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html
+
+    Returns
+    ------
+    API Gateway Lambda Proxy Output Format: dict
+
+        Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
+    """
+
     with session_scope() as session:
         inventory = session.query(Inventory).order_by(Inventory.fkplaces).all()
 
@@ -124,7 +141,7 @@ def getInventory(event, context):
     }
 
 
-def bookMaterial(event, context):
+def bookMaterial(event, context):  # Lambda Function
     """Zu- und Abbuchung von Material."""
     logger.info(event)
 
@@ -149,7 +166,7 @@ def bookMaterial(event, context):
                        opened=bookMaterial['opened'], quantity=bookMaterial['quantity'], productionOrderNr='')
 
 
-def bookProductToStock(event, context):
+def bookProductToStock(event, context):  # Lambda Function
     """Zubuchung von Produkten mit Produktions-Order-Nr."""
     logger.info(event)
 
@@ -225,7 +242,7 @@ def bookProductToStock(event, context):
     return bookToStock(fkmaterials, bookProduct['fkplaces'], 0, quantity, bookProduct['productionOrderNr'])
 
 
-def bookProductFromStock(event, context):
+def bookProductFromStock(event, context):  # Lambda Function
     """Abbuchen von Produkten mit Produktions-Order-Nr. und Reservierung."""
     logger.info(event)
 
@@ -345,7 +362,7 @@ def bookToStock(fkmaterials, fkplaces, opened, quantity, productionOrderNr):
         }
 
 
-def getPackageList(event, context):
+def getPackageList(event, context):  # Lambda Function
     """Gibt alle offenen Reservierungen bzw. Bestellungen des Versands als Packliste zurück."""
     with session_scope() as session:
         goodsOrdersPositions = session.query(GoodsOrderPosition). \
@@ -365,7 +382,7 @@ def getPackageList(event, context):
     }
 
 
-def createGoodsOrders(event, context):
+def createGoodsOrders(event, context):  # Lambda Function
     """Anlage von einer oder mehreren Reservierungen/Bestellungen von Produkten entweder mit Materialnummer + Menge
     oder ProductionOrderNr """
     logger.info(event)
@@ -484,7 +501,7 @@ def reserveProductsWithProdOrderNr(ProductionOrderNr, session):
     stock = session.query(func.ifnull(func.sum(StockEntry.quantity), 0), StockEntry.fkmaterials,
                           StockEntry.fkplaces). \
         filter(StockEntry.productionOrderNr == ProductionOrderNr). \
-        group_by(StockEntry.fkmaterials, StockEntry.fkplaces).\
+        group_by(StockEntry.fkmaterials, StockEntry.fkplaces). \
         having(func.ifnull(func.sum(StockEntry.quantity), 0) > 0).all()
 
     if stock is None:

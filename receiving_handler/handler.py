@@ -4,9 +4,9 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
-from schema import Material, Receiving, ReceivingPosition, Order, OrderPosition, Charge, ChargeShirt, ChargeColor, \
-    MaterialSchema, ReceivingSchema, ReceivingPositionSchema, OrderSchema, OrderPositionSchema, ChargeSchema, \
-    ChargeShirtSchema, ChargeColorSchema, Supplier, SupplierSchema
+from schema_receiving import Material, Receiving, Order, Charge, MaterialSchema, ReceivingSchema, \
+    ReceivingPositionSchema, \
+    OrderSchema, OrderPositionSchema, ChargeSchema, Supplier, SupplierSchema
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -35,8 +35,28 @@ def session_scope():
         session.close()
 
 
-def getReceiving(event, context):
-    """Gibt den Wareneingang mit einer bestimmten ID zurück."""
+def getReceiving(event, context):  # Lambda Function
+    """Gibt den Wareneingang mit einer bestimmten ID zurück.
+
+    Parameters
+    ----------
+    event: dict, required
+        API Gateway Lambda Proxy Input Format
+
+        Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
+
+    context: object, required
+        Lambda Context runtime methods and attributes
+
+        Context doc: https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html
+
+    Returns
+    ------
+    API Gateway Lambda Proxy Output Format: dict
+
+        Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
+    """
+
     params = event["pathParameters"]
     id = params["id"]
 
@@ -66,7 +86,7 @@ def getReceiving(event, context):
     }
 
 
-def createReceiving(event, context):
+def createReceiving(event, context):  # Lambda Function
     """Anlage oder Änderung eines Wareneingangs."""
     logger.info(event)
 
@@ -90,7 +110,7 @@ def createReceiving(event, context):
     }
 
 
-def createReceivingPos(event, context):
+def createReceivingPos(event, context):  # Lambda Function
     """Anlage oder Änderung einer Wareneingangsposition."""
     logger.info(event)
 
@@ -114,7 +134,7 @@ def createReceivingPos(event, context):
     }
 
 
-def get_allReceiving(event, context):
+def get_allReceiving(event, context):  # Lambda Function
     """Gibt alle Wareneingänge zurück."""
     with session_scope() as session:
         receivings = session.query(Receiving).with_entities(Receiving.id, Receiving.receiving_date). \
@@ -133,7 +153,7 @@ def get_allReceiving(event, context):
     }
 
 
-def getOrder(event, context):
+def getOrder(event, context):  # Lambda Function
     """Gibt eine Bestellung mit einer bestimmten ID zurück."""
     params = event["pathParameters"]
     id = params["id"]
@@ -164,7 +184,7 @@ def getOrder(event, context):
     }
 
 
-def createOrder(event, context):
+def createOrder(event, context):  # Lambda Function
     """Anlage oder Änderung einer Bestellung."""
     logger.info(event)
 
@@ -188,7 +208,7 @@ def createOrder(event, context):
     }
 
 
-def createOrderPos(event, context):
+def createOrderPos(event, context):  # Lambda Function
     """Anlage oder Änderung einer Bestellposition."""
     logger.info(event)
 
@@ -213,7 +233,7 @@ def createOrderPos(event, context):
     }
 
 
-def get_allOrders(event, context):
+def get_allOrders(event, context):  # Lambda Function
     """Gibt alle Bestellungen zurück."""
     with session_scope() as session:
         orders = session.query(Order).with_entities(Order.idorders, Order.order_date, Order.fksuppliers). \
@@ -232,7 +252,7 @@ def get_allOrders(event, context):
     }
 
 
-def getCharge(event, context):
+def getCharge(event, context):  # Lambda Function
     """Gibt eine Charge mit einer bestimmten ID zurück."""
     params = event["pathParameters"]
     id = params["id"]
@@ -271,7 +291,7 @@ def getCharge(event, context):
     }
 
 
-def createCharge(event, context):
+def createCharge(event, context):  # Lambda Function
     """Anlage oder Änderung einer Charge."""
     logger.info(event)
 
@@ -296,7 +316,7 @@ def createCharge(event, context):
     }
 
 
-def getMaterial(event, context):
+def getMaterial(event, context):  # Lambda Function
     """Gibt ein Material mit einer bestimmten ID zurück."""
     params = event["pathParameters"]
     id = params["id"]
@@ -327,7 +347,7 @@ def getMaterial(event, context):
     }
 
 
-def get_allMaterials(event, context):
+def get_allMaterials(event, context):  # Lambda Function
     """Gibt alle Materialien zurück."""
     with session_scope() as session:
         materials = session.query(Material).with_entities(Material.idmaterials, Material.name, Material.art). \
@@ -346,7 +366,7 @@ def get_allMaterials(event, context):
     }
 
 
-def createMaterial(event, context):
+def createMaterial(event, context):  # Lambda Function
     """Anlage oder Änderung eines Materials."""
     logger.info(event)
 
@@ -371,7 +391,7 @@ def createMaterial(event, context):
     }
 
 
-def getSupplier(event, context):
+def getSupplier(event, context):  # Lambda Function
     """Gibt einen Lieferanten mit einer bestimmten ID zurück."""
     params = event["pathParameters"]
     id = params["id"]
@@ -402,7 +422,7 @@ def getSupplier(event, context):
     }
 
 
-def get_allSuppliers(event, context):
+def get_allSuppliers(event, context):  # Lambda Function
     """Gibt alle Lieferanten zurück."""
     with session_scope() as session:
         suppliers = session.query(Supplier).with_entities(Supplier.idsuppliers, Supplier.name, Supplier.ort). \
@@ -421,7 +441,7 @@ def get_allSuppliers(event, context):
     }
 
 
-def createSupplier(event, context):
+def createSupplier(event, context):  # Lambda Function
     """Anlage oder Änderung eines lieferanten."""
     logger.info(event)
 
