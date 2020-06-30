@@ -52,7 +52,7 @@ class ReceivingPosition(Base):
 class Order(Base):
     __tablename__ = 'orders'
     idorders = Column(Integer, primary_key=True)
-    order_date = Column(DateTime, default=dt, nullable=False)
+    order_date = Column(DateTime, default=dt.now)
     capturer = Column(String(10))
     state = Column(String(7))
     fksuppliers = Column(Integer, ForeignKey('suppliers.idsuppliers'))
