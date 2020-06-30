@@ -1,0 +1,918 @@
+{
+  "swagger" : "2.0",
+  "info" : {
+    "description" : "API des Microservices der Materialwirtschaft im Projekt der Vorlesung Enterprise Software Implementierung an der Hochschule Offenburg",
+    "version" : "1.0",
+    "title" : "EsiMawi",
+    "license" : {
+      "name" : "Apache 2.0",
+      "url" : "http://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  },
+  "host" : "",
+  "basePath" : "/Prod",
+  "tags" : [ {
+    "name" : "Wareneingang"
+  }, {
+    "name" : "Bestellung"
+  }, {
+    "name" : "Lagerverwaltung"
+  }, {
+    "name" : "Materialverwaltung"
+  }, {
+    "name" : "Stammdaten"
+  } ],
+  "schemes" : [ "https" ],
+  "paths" : {
+    "/charges" : {
+      "post" : {
+        "tags" : [ "Materialverwaltung" ],
+        "summary" : "Anlage/Änderung einer Charge",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "description" : "Chargen-Objekt, welches erzeugt werden soll",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/Charge"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Angelegte Charge",
+            "schema" : {
+              "$ref" : "#/definitions/Charge"
+            }
+          }
+        }
+      }
+    },
+    "/charges/{id}" : {
+      "get" : {
+        "tags" : [ "Materialverwaltung" ],
+        "summary" : "eine bestimmte Charge",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID der Charge",
+          "required" : true,
+          "type" : "integer"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Charge.",
+            "schema" : {
+              "$ref" : "#/definitions/Charge"
+            }
+          }
+        }
+      }
+    },
+    "/goods/orders" : {
+      "get" : {
+        "tags" : [ "Lagerverwaltung" ],
+        "summary" : "aktuelle Packliste",
+        "description" : "Packliste, die aus den offenen Reservierungen erstellt wird\n",
+        "parameters" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "Packliste",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/ReservationOrderPosition"
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Lagerverwaltung" ],
+        "summary" : "Anlage/Änderung von Reservierungen bzw. Bestellungen",
+        "description" : "Anlage von Reservierungen bzw. Bestellungen durch Versand/Vertrieb\n",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "description" : "Array der Order Objekte, die angelegt werden sollen",
+          "required" : true,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/GoodsOrder"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Reservierung angelegt.",
+            "schema" : {
+              "$ref" : "#/definitions/ReservationResponse"
+            }
+          }
+        }
+      }
+    },
+    "/inventory" : {
+      "get" : {
+        "tags" : [ "Lagerverwaltung" ],
+        "summary" : "aktuelles Inventar",
+        "description" : "Gibt den aktuellen Stand des Inventars zurück.\n",
+        "parameters" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "aktuelles Inventar",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Inventory"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/materials" : {
+      "get" : {
+        "tags" : [ "Materialverwaltung" ],
+        "summary" : "alle Materialien",
+        "description" : "Gibt alle Materialien zurück.\n",
+        "parameters" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "Material",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Material"
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Materialverwaltung" ],
+        "summary" : "Anlage/Änderung von Material",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "description" : "Material-Objekt, das erzeugt werden soll",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/Material"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Material angelegt.",
+            "schema" : {
+              "$ref" : "#/definitions/Material"
+            }
+          }
+        }
+      }
+    },
+    "/materials/{id}" : {
+      "get" : {
+        "tags" : [ "Materialverwaltung" ],
+        "summary" : "ein bestimmtes Material",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID des Materials",
+          "required" : true,
+          "type" : "integer"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Material ist vorhanden.",
+            "schema" : {
+              "$ref" : "#/definitions/Material"
+            }
+          }
+        }
+      }
+    },
+    "/orders" : {
+      "get" : {
+        "tags" : [ "Bestellung" ],
+        "summary" : "alle Bestellungen",
+        "parameters" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "Alle Orders",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Order"
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Bestellung" ],
+        "summary" : "Anlage/Änderung einer Bestellung",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "description" : "Order object, das erzeugt werden soll",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/Order"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Order angelegt.",
+            "schema" : {
+              "$ref" : "#/definitions/Order"
+            }
+          }
+        }
+      }
+    },
+    "/orders/pos" : {
+      "post" : {
+        "tags" : [ "Bestellung" ],
+        "summary" : "Anlage/Änderung einer Bestellposition",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "description" : "Bestellposition, die angelegt werden soll",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/OrderPosition"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Angelegte Bestellposition.",
+            "schema" : {
+              "$ref" : "#/definitions/OrderPosition"
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}" : {
+      "get" : {
+        "tags" : [ "Bestellung" ],
+        "summary" : "eine bestimmte Bestellung",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID der Order",
+          "required" : true,
+          "type" : "integer"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Order angenommen.",
+            "schema" : {
+              "$ref" : "#/definitions/Order"
+            }
+          }
+        }
+      }
+    },
+    "/receivings" : {
+      "get" : {
+        "tags" : [ "Wareneingang" ],
+        "summary" : "alle Wareneingänge",
+        "parameters" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "Alle Wareneingänge",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Receiving"
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Wareneingang" ],
+        "summary" : "Anlage/Änderung eines Wareneingangs",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/Receiving"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Angelegter Wareneingang",
+            "schema" : {
+              "$ref" : "#/definitions/Receiving"
+            }
+          }
+        }
+      }
+    },
+    "/receivings/pos" : {
+      "post" : {
+        "tags" : [ "Wareneingang" ],
+        "summary" : "Anlage/Änderung einer Wareneingangspostion",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/ReceivingPosition"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Angelegte Wareneingangspostion",
+            "schema" : {
+              "$ref" : "#/definitions/ReceivingPosition"
+            }
+          }
+        }
+      }
+    },
+    "/receivings/{id}" : {
+      "get" : {
+        "tags" : [ "Wareneingang" ],
+        "summary" : "ein bestimmter Wareneingang",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID des Wareneingangs",
+          "required" : true,
+          "type" : "integer"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Order angenommen.",
+            "schema" : {
+              "$ref" : "#/definitions/Receiving"
+            }
+          }
+        }
+      }
+    },
+    "/stock/material" : {
+      "post" : {
+        "tags" : [ "Lagerverwaltung" ],
+        "summary" : "Aus- oder Einbuchung von Material",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/BookMaterial"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Buchung angelegt.",
+            "schema" : {
+              "$ref" : "#/definitions/StockEntry"
+            }
+          }
+        }
+      }
+    },
+    "/stock/product" : {
+      "post" : {
+        "tags" : [ "Lagerverwaltung" ],
+        "summary" : "Einbuchung von Produkten",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/BookProductToStock"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Buchung angelegt.",
+            "schema" : {
+              "$ref" : "#/definitions/StockEntry"
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Lagerverwaltung" ],
+        "summary" : "Ausbuchung von Produkten",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/BookProductFromStock"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Buchung angelegt.",
+            "schema" : {
+              "$ref" : "#/definitions/StockEntry"
+            }
+          }
+        }
+      }
+    },
+    "/suppliers" : {
+      "get" : {
+        "tags" : [ "Stammdaten" ],
+        "summary" : "alle Lieferanten",
+        "description" : "Gibt alle Lieferanten zurück.\n",
+        "parameters" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "Lieferanten",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Supplier"
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Stammdaten" ],
+        "summary" : "Anlage/Änderung von Lieferanten",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "description" : "Lieferanten-Objekt, das erzeugt werden soll",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/Supplier"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Lieferant angelegt.",
+            "schema" : {
+              "$ref" : "#/definitions/Supplier"
+            }
+          }
+        }
+      }
+    },
+    "/suppliers/{id}" : {
+      "get" : {
+        "tags" : [ "Stammdaten" ],
+        "summary" : "ein bestimmter Lieferant",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID des Lieferanten",
+          "required" : true,
+          "type" : "integer"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Lieferant ist vorhanden.",
+            "schema" : {
+              "$ref" : "#/definitions/Supplier"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions" : {
+    "Inventory" : {
+      "type" : "object",
+      "properties" : {
+        "fkplaces" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "fkmaterials" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "opened" : {
+          "type" : "integer"
+        },
+        "quantity" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "value_of_materials" : {
+          "type" : "number"
+        },
+        "material" : {
+          "$ref" : "#/definitions/Material"
+        },
+        "place" : {
+          "$ref" : "#/definitions/Place"
+        }
+      },
+      "description" : "Inventar des Unternehmens"
+    },
+    "Material" : {
+      "type" : "object",
+      "properties" : {
+        "idmaterials" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "name" : {
+          "type" : "string",
+          "description" : "Name des Materials"
+        },
+        "description" : {
+          "type" : "string",
+          "description" : "Description"
+        },
+        "art" : {
+          "type" : "string",
+          "description" : "Materialart"
+        },
+        "size" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "measure" : {
+          "type" : "string",
+          "description" : "Maßeinheit"
+        },
+        "minStock" : {
+          "type" : "integer",
+          "format" : "int64"
+        }
+      }
+    },
+    "Charge" : {
+      "type" : "object",
+      "required" : [ "fkmaterials" ],
+      "properties" : {
+        "idcharges" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "fkmaterials" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "date" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "chargeShirt" : {
+          "$ref" : "#/definitions/ChargeShirt"
+        },
+        "chargeColor" : {
+          "$ref" : "#/definitions/ChargeColor"
+        }
+      }
+    },
+    "ChargeColor" : {
+      "type" : "object",
+      "properties" : {
+        "fkcharges" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "ppml" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "viscosity" : {
+          "type" : "number"
+        },
+        "deltaE" : {
+          "type" : "number"
+        }
+      },
+      "description" : "spezifische Qualitätswerte für Farben"
+    },
+    "Place" : {
+      "type" : "object",
+      "properties" : {
+        "idplaces" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "description" : {
+          "type" : "string",
+          "description" : "Beschreibung zum Lagerplatz"
+        }
+      }
+    },
+    "Order" : {
+      "type" : "object",
+      "required" : [ "order_date" ],
+      "properties" : {
+        "idorders" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "ID der Order"
+        },
+        "fksuppliers" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "order_date" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "capturer" : {
+          "type" : "string"
+        },
+        "state" : {
+          "type" : "string"
+        }
+      }
+    },
+    "OrderPosition" : {
+      "type" : "object",
+      "required" : [ "fkmaterials", "fkorders", "position", "quantity" ],
+      "properties" : {
+        "idordersPos" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "fkorders" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "FK des Wareneingangs"
+        },
+        "position" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "fkmaterials" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "quantity" : {
+          "type" : "integer",
+          "format" : "int64"
+        }
+      },
+      "description" : "Position einer Bestellung"
+    },
+    "ReceivingPosition" : {
+      "type" : "object",
+      "required" : [ "fkreceivings", "position" ],
+      "properties" : {
+        "fkreceivings" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "FK des Wareneingangs"
+        },
+        "position" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "fkmaterials" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "quantity" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "checked" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "price" : {
+          "type" : "number"
+        },
+        "fkordersPos" : {
+          "type" : "integer",
+          "format" : "int64"
+        }
+      },
+      "description" : "Positionen eines Wareneingangs"
+    },
+    "GoodsOrder" : {
+      "type" : "object",
+      "properties" : {
+        "fkmaterials" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "productionOrderNr" : {
+          "type" : "string"
+        },
+        "quantity" : {
+          "type" : "integer",
+          "format" : "int64"
+        }
+      },
+      "description" : "**Schema** für die Anlage von Bestellung bzw. Reservierung von Produkten durch Versand/Vertrieb"
+    },
+    "ReservationOrder" : {
+      "type" : "object",
+      "properties" : {
+        "idgoodsOrders" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "fkmaterials" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "creation_date" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "goodsOrderPos" : {
+          "$ref" : "#/definitions/ReservationOrderPosition"
+        }
+      },
+      "description" : "Bestellung bzw. Reservierung von Produkten durch Versand/Vertrieb"
+    },
+    "ReservationOrderPosition" : {
+      "type" : "object",
+      "properties" : {
+        "fkgoodsOrders" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "productionOrderNr" : {
+          "type" : "string"
+        },
+        "quantity" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "done" : {
+          "type" : "integer"
+        },
+        "fkplaces" : {
+          "type" : "integer"
+        }
+      },
+      "description" : "Positionen der Bestellung bzw. Reservierung von Produkten durch Versand/Vertrieb"
+    },
+    "ReservationResponse" : {
+      "type" : "object",
+      "properties" : {
+        "error_message" : {
+          "type" : "string"
+        },
+        "reservation" : {
+          "$ref" : "#/definitions/ReservationOrder"
+        }
+      },
+      "description" : "**Schema** für die Response auf eine Bestellung bzw. Reservierung von Produkten durch Versand/Vertrieb"
+    },
+    "BookMaterial" : {
+      "type" : "object",
+      "required" : [ "fkmaterials", "fkplaces", "quantity" ],
+      "properties" : {
+        "fkmaterials" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "quantity" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "fkplaces" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "opened" : {
+          "type" : "integer"
+        }
+      },
+      "description" : "Materialbuchung"
+    },
+    "BookProductToStock" : {
+      "type" : "object",
+      "required" : [ "fkplaces", "productionOrderNr" ],
+      "properties" : {
+        "productionOrderNr" : {
+          "type" : "string"
+        },
+        "fkplaces" : {
+          "type" : "integer",
+          "format" : "int64"
+        }
+      },
+      "description" : "**Schema** für die Buchung von Produkten mit Produktions-Auftragsnummer zum Lager "
+    },
+    "BookProductFromStock" : {
+      "type" : "object",
+      "required" : [ "fkplaces", "productionOrderNr" ],
+      "properties" : {
+        "productionOrderNr" : {
+          "type" : "string"
+        },
+        "fkplaces" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "fkgoodsOrders" : {
+          "type" : "integer",
+          "format" : "int64"
+        }
+      },
+      "description" : "**Schema** für die Buchung von Produkten mit Produktions-Auftragsnummer und Reservierung vom Lager "
+    },
+    "ChargeShirt" : {
+      "properties" : {
+        "fkcharges" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "whiteness" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "absorbency" : {
+          "type" : "number"
+        }
+      },
+      "description" : "spezifische Qualitätswerte für T-Shirts"
+    },
+    "Receiving" : {
+      "properties" : {
+        "id" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "fksuppliers" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "receiving_date" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "capturer" : {
+          "type" : "string"
+        }
+      },
+      "description" : "Wareneingangskopf"
+    },
+    "StockEntry" : {
+      "type" : "object",
+      "properties" : {
+        "idstockEntries" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "fkplaces" : {
+          "type" : "integer"
+        },
+        "fkmaterials" : {
+          "type" : "integer"
+        },
+        "productionOrderNr" : {
+          "type" : "string"
+        },
+        "opened" : {
+          "type" : "integer"
+        },
+        "quantity" : {
+          "type" : "integer"
+        },
+        "booking_date" : {
+          "type" : "string",
+          "format" : "date-time"
+        }
+      }
+    },
+    "Supplier" : {
+      "type" : "object",
+      "properties" : {
+        "idsuppliers" : {
+          "type" : "integer"
+        },
+        "address" : {
+          "type" : "string"
+        },
+        "postcode" : {
+          "type" : "string"
+        },
+        "ort" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "contact" : {
+          "type" : "string"
+        },
+        "phone" : {
+          "type" : "string"
+        },
+        "fax" : {
+          "type" : "string"
+        },
+        "email" : {
+          "type" : "string"
+        }
+      }
+    }
+  }
+}
